@@ -7,10 +7,10 @@ import { revalidatePath } from "next/cache";
 export async function saveConsoleDataAction(prevState: any, formData: FormData) {
   const organizerId = await getSessionUserId();
   if (!organizerId) {
-    return { success: false, error: "Unauthorized." };
+    return { success: false, error: "Unauthorized: Organizer login required." };
   }
 
-  const hackathonId = formData.get("hackathonId") as string;
+  const hackathonId = (formData.get("hackathonId") as string || "").trim();
   const faqsJson = formData.get("faqs") as string;
   const scheduleJson = formData.get("scheduleItems") as string;
 
@@ -49,14 +49,18 @@ export async function saveConsoleDataAction(prevState: any, formData: FormData) 
         where: { hackathonId },
       });
 
-      // 2. Insert new FAQs
-      if (faqs.length > 0) {
+      // 2. Insert new valid FAQs
+      const validFaqs = faqs
+        .filter((f) => f.question?.trim() && f.answer?.trim())
+        .map((f) => ({
+          question: f.question.trim(),
+          answer: f.answer.trim(),
+          hackathonId,
+        }));
+
+      if (validFaqs.length > 0) {
         await tx.fAQ.createMany({
-          data: faqs.map((f) => ({
-            question: f.question,
-            answer: f.answer,
-            hackathonId,
-          })),
+          data: validFaqs,
         });
       }
 
@@ -65,14 +69,18 @@ export async function saveConsoleDataAction(prevState: any, formData: FormData) 
         where: { hackathonId },
       });
 
-      // 4. Insert new schedule items
-      if (scheduleItems.length > 0) {
+      // 4. Insert new valid schedule items
+      const validScheduleItems = scheduleItems
+        .filter((s) => s.time?.trim() && s.eventName?.trim())
+        .map((s) => ({
+          time: s.time.trim(),
+          eventName: s.eventName.trim(),
+          hackathonId,
+        }));
+
+      if (validScheduleItems.length > 0) {
         await tx.scheduleItem.createMany({
-          data: scheduleItems.map((s) => ({
-            time: s.time,
-            eventName: s.eventName,
-            hackathonId,
-          })),
+          data: validScheduleItems,
         });
       }
     });
@@ -86,3 +94,4 @@ export async function saveConsoleDataAction(prevState: any, formData: FormData) 
   revalidatePath(`/organizer/dashboard/hackathons/${hackathonId}`);
   return { success: true };
 }
+

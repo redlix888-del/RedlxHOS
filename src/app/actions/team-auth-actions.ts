@@ -6,32 +6,53 @@ import { redirect } from "next/navigation";
 import crypto from "crypto";
 
 function generateJoinCode(): string {
-  return crypto.randomBytes(3).toString("hex").toUpperCase(); // e.g. 'A8D2F9'
+  return crypto.randomBytes(3).toString("hex").toUpperCase();
 }
 
 export async function teamSignUpAction(prevState: any, formData: FormData) {
-  const teamName = formData.get("teamName") as string;
-  const teamLeadName = formData.get("teamLeadName") as string;
-  const email = formData.get("email") as string;
-  const password = formData.get("password") as string;
-  const hackathonId = formData.get("hackathonId") as string;
+  const teamName = (formData.get("teamName") as string || "").trim();
+  const teamLeadName = (formData.get("teamLeadName") as string || "").trim();
+  const email = (formData.get("email") as string || "").trim().toLowerCase();
+  const password = formData.get("password") as string || "";
+  const hackathonId = (formData.get("hackathonId") as string || "").trim();
 
   if (!teamName || !teamLeadName || !email || !password || !hackathonId) {
     return { success: false, error: "Missing required fields." };
   }
 
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  if (!emailRegex.test(email)) {
+    return { success: false, error: "Please enter a valid email address." };
+  }
+
+  if (password.length < 6) {
+    return { success: false, error: "Password must be at least 6 characters." };
+  }
+
   try {
-    const existing = await prisma.team.findUnique({
+    // 1. Verify Hackathon exists
+    const hackathon = await prisma.hackathon.findUnique({
+      where: { id: hackathonId },
+    });
+
+    if (!hackathon) {
+      return { success: false, error: "Hackathon not found or inactive." };
+    }
+
+    // 2. Check if email is registered as Team Lead or Team Member
+    const existingTeam = await prisma.team.findUnique({
+      where: { email },
+    });
+    const existingMember = await prisma.teamMember.findUnique({
       where: { email },
     });
 
-    if (existing) {
-      return { success: false, error: "Email is already registered for a team." };
+    if (existingTeam || existingMember) {
+      return { success: false, error: "Email is already registered for a team or member." };
     }
 
     const passwordHash = hashPassword(password);
 
-    // Generate unique joinCode
     let joinCode = generateJoinCode();
     let attempts = 0;
     while (attempts < 10) {
@@ -54,13 +75,12 @@ export async function teamSignUpAction(prevState: any, formData: FormData) {
       },
     });
 
-    // Create system notification message in general channel
     await prisma.message.create({
       data: {
         content: `System added ${teamLeadName} (Team Lead) to the console.`,
         channelId: "general",
         senderName: "System",
-        senderAvatar: "⚙️",
+        senderAvatar: "SYS",
         senderRole: "System",
         teamId: team.id,
         hackathonId: hackathonId,
@@ -80,16 +100,16 @@ export async function teamSignUpAction(prevState: any, formData: FormData) {
 }
 
 export async function teamSignInAction(prevState: any, formData: FormData) {
-  const email = formData.get("email") as string;
-  const password = formData.get("password") as string;
-  const hackathonId = formData.get("hackathonId") as string;
+  const email = (formData.get("email") as string || "").trim().toLowerCase();
+  const password = formData.get("password") as string || "";
+  const hackathonId = (formData.get("hackathonId") as string || "").trim();
 
   if (!email || !password) {
     return { success: false, error: "Please enter your email and password." };
   }
 
   try {
-    // 1. Try to find in Team (Team Lead)
+    // Check Team (Team Lead)
     const team = await prisma.team.findUnique({
       where: { email },
     });
@@ -105,12 +125,12 @@ export async function teamSignInAction(prevState: any, formData: FormData) {
       }
     }
 
-    // 2. Try to find in TeamMember (Team Member)
+    // Check TeamMember
     const member = await prisma.teamMember.findUnique({
       where: { email },
       include: {
-        team: true
-      }
+        team: true,
+      },
     });
 
     if (member) {
@@ -140,18 +160,30 @@ export async function teamLogOutAction() {
 }
 
 export async function verifyJoinCodeAction(joinCode: string) {
-  if (!joinCode) {
+  if (!joinCode || !joinCode.trim()) {
     return { success: false, error: "Please enter an invite code." };
   }
 
   try {
+    const code = joinCode.toUpperCase().trim();
     const team = await prisma.team.findUnique({
-      where: { joinCode: joinCode.toUpperCase().trim() },
-      select: { id: true, teamName: true },
+      where: { joinCode: code },
+      select: {
+        id: true,
+        teamName: true,
+        _count: {
+          select: { members: true },
+        },
+      },
     });
 
     if (!team) {
       return { success: false, error: "Invalid invite code. Team not found." };
+    }
+
+    // Maximum 4 members per team (1 lead + 3 members)
+    if (team._count.members >= 3) {
+      return { success: false, error: "This team has already reached maximum capacity (4 members)." };
     }
 
     return { success: true, teamId: team.id, teamName: team.teamName };
@@ -162,22 +194,48 @@ export async function verifyJoinCodeAction(joinCode: string) {
 }
 
 export async function joinTeamAction(prevState: any, formData: FormData) {
-  const fullName = formData.get("fullName") as string;
-  const email = formData.get("email") as string;
-  const password = formData.get("password") as string;
-  const teamId = formData.get("teamId") as string;
+  const fullName = (formData.get("fullName") as string || "").trim();
+  const email = (formData.get("email") as string || "").trim().toLowerCase();
+  const password = formData.get("password") as string || "";
+  const teamId = (formData.get("teamId") as string || "").trim();
 
   if (!fullName || !email || !password || !teamId) {
     return { success: false, error: "Missing required fields." };
   }
 
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  if (!emailRegex.test(email)) {
+    return { success: false, error: "Please enter a valid email address." };
+  }
+
+  if (password.length < 6) {
+    return { success: false, error: "Password must be at least 6 characters." };
+  }
+
   try {
-    // Check if email already exists in TeamMember or Team tables
+    // 1. Verify team and check capacity
+    const team = await prisma.team.findUnique({
+      where: { id: teamId },
+      include: {
+        _count: {
+          select: { members: true },
+        },
+      },
+    });
+
+    if (!team) {
+      return { success: false, error: "Team not found." };
+    }
+
+    if (team._count.members >= 3) {
+      return { success: false, error: "This team has already reached maximum capacity (4 members)." };
+    }
+
     const existingMember = await prisma.teamMember.findUnique({ where: { email } });
     const existingLead = await prisma.team.findUnique({ where: { email } });
 
     if (existingMember || existingLead) {
-      return { success: false, error: "Email is already registered." };
+      return { success: false, error: "Email is already registered for a team or member." };
     }
 
     const passwordHash = hashPassword(password);
@@ -191,24 +249,17 @@ export async function joinTeamAction(prevState: any, formData: FormData) {
       },
     });
 
-    const team = await prisma.team.findUnique({
-      where: { id: teamId },
+    await prisma.message.create({
+      data: {
+        content: `System added ${fullName} (Team Member) to the console.`,
+        channelId: "general",
+        senderName: "System",
+        senderAvatar: "SYS",
+        senderRole: "System",
+        teamId: teamId,
+        hackathonId: team.hackathonId,
+      },
     });
-
-    if (team) {
-      // Create system notification message in general channel
-      await prisma.message.create({
-        data: {
-          content: `System added ${fullName} (Team Member) to the console.`,
-          channelId: "general",
-          senderName: "System",
-          senderAvatar: "⚙️",
-          senderRole: "System",
-          teamId: teamId,
-          hackathonId: team.hackathonId,
-        },
-      });
-    }
 
     await setTeamSessionCookie(member.id);
   } catch (err: any) {
@@ -221,3 +272,4 @@ export async function joinTeamAction(prevState: any, formData: FormData) {
 
   redirect("/team/dashboard");
 }
+

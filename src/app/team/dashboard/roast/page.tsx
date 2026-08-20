@@ -72,31 +72,31 @@ export default function TeamRoastPage() {
 
     // Generate dynamic logs based on project properties
     const dynamicLogs: RoastLog[] = [
-      { type: "info", text: `🔍 Running static review for target: ${siteUrl}` },
-      { type: "info", text: `💡 Detected project name: "${projectName || "Untitled Hack"}"` },
+      { type: "info", text: `[AUDIT] Running static review for target: ${siteUrl}` },
+      { type: "info", text: `[INFO] Detected project name: "${projectName || "Untitled Hack"}"` },
     ];
 
     if (!projectName) {
       dynamicLogs.push({
         type: "warning",
-        text: "⚠️ Project Name is blank in database. That makes it hard for users (and judges) to remember you.",
+        text: "[WARNING] Project Name is blank in database. That makes it hard for users (and judges) to remember you.",
       });
     }
 
     if (!projectDescription || projectDescription.length < 20) {
       dynamicLogs.push({
         type: "burn",
-        text: "🔥 Your project description is shorter than a tweet. Did you give up writing it midway?",
+        text: "[CRITIQUE] Your project description is shorter than a tweet. Did you give up writing it midway?",
       });
     } else {
       dynamicLogs.push({
         type: "info",
-        text: `🔍 Auditing description: "${projectDescription.substring(0, 60)}..."`,
+        text: `[AUDIT] Auditing description: "${projectDescription.substring(0, 60)}..."`,
       });
       if (projectDescription.toLowerCase().includes("ai") || projectDescription.toLowerCase().includes("wrapper")) {
         dynamicLogs.push({
           type: "burn",
-          text: "🔥 Found 'AI' in description. Is this a real product, or is it another GPT-4 API wrapper with a custom CSS theme?",
+          text: "[CRITIQUE] Found 'AI' in description. Is this a real product, or is it another GPT API wrapper with a custom CSS theme?",
         });
       }
     }
@@ -105,22 +105,22 @@ export default function TeamRoastPage() {
     if (siteUrl.includes("vercel.app") || siteUrl.includes("netlify.app")) {
       dynamicLogs.push({
         type: "info",
-        text: "💡 Site is hosted on a free-tier hosting platform. Classic hackathon deployment.",
+        text: "[HOSTING] Site is hosted on a free-tier hosting platform. Classic hackathon deployment.",
       });
     } else {
       dynamicLogs.push({
         type: "info",
-        text: "🔍 Target site utilizes a custom domain name. Staging server seems professional.",
+        text: "[HOSTING] Target site utilizes a custom domain name. Staging server seems professional.",
       });
     }
 
     // Standard technical burns
     dynamicLogs.push(
-      { type: "info", text: "🔍 Analyzing Prisma schemas and DB indexes..." },
-      { type: "warning", text: "⚠️ Found 12 relational database tables with zero manual index keys." },
-      { type: "burn", text: "🔥 Enjoy that 5-second database response delay. Your search inputs will load slower than dial-up internet." },
-      { type: "info", text: "🔍 Auditing design systems & theme tokens..." },
-      { type: "burn", text: "🔥 That palette uses generic red/blue elements. It is screaming at users instead of offering high-fidelity feedback." }
+      { type: "info", text: "[AUDIT] Analyzing Prisma schemas and DB indexes..." },
+      { type: "warning", text: "[WARNING] Found 12 relational database tables with zero manual index keys." },
+      { type: "burn", text: "[PERF] Enjoy that 5-second database response delay. Your search inputs will load slower than dial-up internet." },
+      { type: "info", text: "[DESIGN] Auditing design systems & theme tokens..." },
+      { type: "burn", text: "[DESIGN] That palette uses generic red/blue elements. It is screaming at users instead of offering high-fidelity feedback." }
     );
 
     const calculatedBurn = projectName ? "Scorch (Spicy)" : "Inferno (Extra Spicy)";
@@ -130,7 +130,7 @@ export default function TeamRoastPage() {
 
     dynamicLogs.push({
       type: "success",
-      text: `🎉 Audit finished. Overall Verdict: ${calculatedVerdict}`,
+      text: `[COMPLETE] Audit finished. Overall Verdict: ${calculatedVerdict}`,
     });
 
     let currentLogIndex = 0;
@@ -170,7 +170,7 @@ export default function TeamRoastPage() {
         setIsRoasting(false);
         setRoastDone(true);
       }
-    }, 850);
+    }, 400);
   };
 
   if (isLoading) {
@@ -204,7 +204,7 @@ export default function TeamRoastPage() {
         
         {!siteUrl && (
           <div className="bg-amber-50 border border-amber-200 text-amber-800 text-xs p-3 font-semibold mb-2">
-            💡 Note: You haven't submitted a project or live URL in the "Project Submission" page yet. We recommend setting one up there first, or you can test by typing below.
+            Note: You haven't submitted a project or live URL in the "Project Submission" page yet. We recommend setting one up there first, or you can test by typing below.
           </div>
         )}
 

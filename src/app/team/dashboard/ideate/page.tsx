@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Lightbulb, CheckSquare, BarChart, RefreshCw, AlertTriangle, ShieldCheck, Sparkles, Loader2 } from "lucide-react";
+import { Lightbulb, CheckSquare, BarChart, RefreshCw, AlertTriangle, ShieldCheck, Sparkles, Loader2, Check } from "lucide-react";
 import { fetchIdeaAction, saveIdeaAction } from "../../../actions/team-feature-actions";
 
 interface ValidationCriteria {
@@ -308,8 +308,8 @@ export default function TeamIdeatePage() {
                 <div key={index} className="flex items-start gap-3 p-3 border border-zinc-150 hover:bg-zinc-50/50 transition-colors">
                   <div className="shrink-0 mt-0.5">
                     {item.passed ? (
-                      <span className="w-4 h-4 rounded-none bg-emerald-100 border border-emerald-300 text-emerald-700 flex items-center justify-center text-[10px] font-black">
-                        ✓
+                      <span className="w-4 h-4 rounded-none bg-emerald-100 border border-emerald-300 text-emerald-700 flex items-center justify-center">
+                        <Check className="w-2.5 h-2.5" />
                       </span>
                     ) : (
                       <span className="w-4 h-4 rounded-none bg-red-100 border border-red-300 text-red-700 flex items-center justify-center text-[10px] font-black">

@@ -7,17 +7,17 @@ import { revalidatePath } from "next/cache";
 export async function updateProfileAction(prevState: any, formData: FormData) {
   const organizerId = await getSessionUserId();
   if (!organizerId) {
-    return { success: false, error: "Unauthorized." };
+    return { success: false, error: "Unauthorized: Organizer login required." };
   }
 
-  const fullName = formData.get("fullName") as string;
-  const designation = formData.get("designation") as string;
-  const organizationName = formData.get("organizationName") as string;
-  const phone = (formData.get("phone") as string) || null;
-  const website = (formData.get("website") as string) || null;
+  const fullName = (formData.get("fullName") as string || "").trim();
+  const designation = (formData.get("designation") as string || "").trim();
+  const organizationName = (formData.get("organizationName") as string || "").trim();
+  const phone = (formData.get("phone") as string || "").trim() || null;
+  const website = (formData.get("website") as string || "").trim() || null;
 
-  const currentPassword = formData.get("currentPassword") as string;
-  const newPassword = formData.get("newPassword") as string;
+  const currentPassword = formData.get("currentPassword") as string || "";
+  const newPassword = formData.get("newPassword") as string || "";
 
   if (!fullName || !designation || !organizationName) {
     return { success: false, error: "Missing required profile fields." };
@@ -69,3 +69,4 @@ export async function updateProfileAction(prevState: any, formData: FormData) {
   revalidatePath("/organizer/dashboard");
   return { success: true };
 }
+

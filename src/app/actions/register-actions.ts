@@ -14,23 +14,35 @@ export async function registerParticipantAction(data: {
   transactionId: string;
   paymentMode: string;
 }) {
-  const {
-    hackathonId,
-    ticketTierName,
-    ticketPriceINR,
-    fullName,
-    email,
-    phone,
-    transactionId,
-    paymentMode,
-  } = data;
+  const hackathonId = (data.hackathonId || "").trim();
+  const ticketTierName = (data.ticketTierName || "").trim();
+  const ticketPriceINR = Math.max(0, Math.round(Number(data.ticketPriceINR) || 0));
+  const fullName = (data.fullName || "").trim();
+  const email = (data.email || "").trim().toLowerCase();
+  const phone = (data.phone || "").trim() || null;
+  const transactionId = (data.transactionId || "").trim();
+  const paymentMode = (data.paymentMode || "").trim();
 
-  if (!hackathonId || !ticketTierName || ticketPriceINR === undefined || !fullName || !email || !transactionId || !paymentMode) {
+  if (!hackathonId || !ticketTierName || !fullName || !email || !transactionId || !paymentMode) {
     return { success: false, error: "All fields are required." };
   }
 
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  if (!emailRegex.test(email)) {
+    return { success: false, error: "Please enter a valid email address." };
+  }
+
   try {
-    // 1. Find or create participant
+    // 1. Verify Hackathon exists
+    const hackathon = await prisma.hackathon.findUnique({
+      where: { id: hackathonId },
+    });
+
+    if (!hackathon) {
+      return { success: false, error: "Hackathon not found or inactive." };
+    }
+
+    // 2. Find or create participant
     let participant = await prisma.participant.findUnique({
       where: { email },
     });
@@ -40,21 +52,20 @@ export async function registerParticipantAction(data: {
         data: {
           fullName,
           email,
-          phone: phone || null,
+          phone,
         },
       });
     } else {
-      // Update details to ensure latest is captured
       participant = await prisma.participant.update({
         where: { email },
         data: {
           fullName,
-          phone: phone || null,
+          phone,
         },
       });
     }
 
-    // 2. Check if already registered
+    // 3. Check if already registered
     const existing = await prisma.registration.findUnique({
       where: {
         hackathonId_participantId: {
@@ -68,7 +79,7 @@ export async function registerParticipantAction(data: {
       return { success: false, error: "You are already registered for this hackathon." };
     }
 
-    // 3. Create registration with status Pending
+    // 4. Create registration with status Pending
     await prisma.registration.create({
       data: {
         hackathonId,
@@ -95,12 +106,17 @@ export async function updateRegistrationStatusAction(registrationId: string, sta
   try {
     const user = await getSessionUser();
     if (!user) {
-      return { success: false, error: "Unauthorized." };
+      return { success: false, error: "Unauthorized: Organizer login required." };
+    }
+
+    const cleanRegId = (registrationId || "").trim();
+    if (!cleanRegId || (status !== "Verified" && status !== "Rejected")) {
+      return { success: false, error: "Invalid registration parameters." };
     }
 
     // Verify registration's hackathon belongs to the logged-in organizer
     const registration = await prisma.registration.findUnique({
-      where: { id: registrationId },
+      where: { id: cleanRegId },
       include: { hackathon: true },
     });
 
@@ -109,7 +125,7 @@ export async function updateRegistrationStatusAction(registrationId: string, sta
     }
 
     const updated = await prisma.registration.update({
-      where: { id: registrationId },
+      where: { id: cleanRegId },
       data: { paymentStatus: status },
     });
 
@@ -122,4 +138,5 @@ export async function updateRegistrationStatusAction(registrationId: string, sta
     return { success: false, error: "Failed to update registration status." };
   }
 }
+
 

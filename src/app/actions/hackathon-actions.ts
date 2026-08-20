@@ -7,21 +7,21 @@ import { revalidatePath } from "next/cache";
 export async function createHackathonAction(prevState: any, formData: FormData) {
   const organizerId = await getSessionUserId();
   if (!organizerId) {
-    return { success: false, error: "Unauthorized." };
+    return { success: false, error: "Unauthorized: Organizer login required." };
   }
 
-  const title = formData.get("title") as string;
-  const description = formData.get("description") as string;
-  const startDateStr = formData.get("startDate") as string;
-  const endDateStr = formData.get("endDate") as string;
-  const location = (formData.get("location") as string) || "Online";
-  const prizePool = (formData.get("prizePool") as string) || "$0";
-  const tag = (formData.get("tag") as string) || "Regional";
-  const status = (formData.get("status") as string) || "Draft";
-  const bannerUrl = (formData.get("bannerUrl") as string) || null;
-  const ticketingLink = (formData.get("ticketingLink") as string) || null;
-  const locationLink = (formData.get("locationLink") as string) || null;
-  const qrCodeUrl = (formData.get("qrCodeUrl") as string) || null;
+  const title = (formData.get("title") as string || "").trim();
+  const description = (formData.get("description") as string || "").trim();
+  const startDateStr = (formData.get("startDate") as string || "").trim();
+  const endDateStr = (formData.get("endDate") as string || "").trim();
+  const location = (formData.get("location") as string || "").trim() || "Online";
+  const prizePool = (formData.get("prizePool") as string || "").trim() || "$0";
+  const tag = (formData.get("tag") as string || "").trim() || "Regional";
+  const status = (formData.get("status") as string || "").trim() || "Draft";
+  const bannerUrl = (formData.get("bannerUrl") as string || "").trim() || null;
+  const ticketingLink = (formData.get("ticketingLink") as string || "").trim() || null;
+  const locationLink = (formData.get("locationLink") as string || "").trim() || null;
+  const qrCodeUrl = (formData.get("qrCodeUrl") as string || "").trim() || null;
 
   const ticketTiersJson = formData.get("ticketTiers") as string;
   let parsedTicketTiers: Array<{ name: string; priceINR: number }> = [];
@@ -76,22 +76,25 @@ export async function createHackathonAction(prevState: any, formData: FormData) 
         status,
         organizerId,
         prizes: {
-          create: parsedPrizes.map((p) => ({
-            title: p.title,
-            value: p.value,
-            description: p.description || null,
-          })),
+          create: parsedPrizes
+            .filter((p) => p.title?.trim())
+            .map((p) => ({
+              title: p.title.trim(),
+              value: (p.value || "").trim(),
+              description: p.description?.trim() || null,
+            })),
         },
         ticketTiers: {
-          create: parsedTicketTiers.map((t) => ({
-            name: t.name,
-            priceINR: Math.max(0, Math.round(Number(t.priceINR) || 0)),
-          })),
+          create: parsedTicketTiers
+            .filter((t) => t.name?.trim())
+            .map((t) => ({
+              name: t.name.trim(),
+              priceINR: Math.max(0, Math.round(Number(t.priceINR) || 0)),
+            })),
         },
       },
     });
 
-    // If status is "Active", let's seed 3 mock participant registrations automatically!
     if (status === "Active") {
       const mockParticipants = [
         { fullName: "Alex Rivera", email: `alex.rivera.${Date.now()}@example.com`, phone: "+1 555-0199" },
@@ -100,7 +103,6 @@ export async function createHackathonAction(prevState: any, formData: FormData) 
       ];
 
       for (const mock of mockParticipants) {
-        // Find or create participant
         const participant = await prisma.participant.upsert({
           where: { email: mock.email },
           update: {},
@@ -111,7 +113,6 @@ export async function createHackathonAction(prevState: any, formData: FormData) 
           },
         });
 
-        // Register participant to hackathon
         await prisma.registration.create({
           data: {
             hackathonId: hackathon.id,
@@ -135,22 +136,22 @@ export async function createHackathonAction(prevState: any, formData: FormData) 
 export async function updateHackathonAction(prevState: any, formData: FormData) {
   const organizerId = await getSessionUserId();
   if (!organizerId) {
-    return { success: false, error: "Unauthorized." };
+    return { success: false, error: "Unauthorized: Organizer login required." };
   }
 
-  const hackathonId = formData.get("id") as string;
-  const title = formData.get("title") as string;
-  const description = formData.get("description") as string;
-  const startDateStr = formData.get("startDate") as string;
-  const endDateStr = formData.get("endDate") as string;
-  const location = (formData.get("location") as string) || "Online";
-  const prizePool = (formData.get("prizePool") as string) || "$0";
-  const bannerUrl = (formData.get("bannerUrl") as string) || null;
-  const ticketingLink = (formData.get("ticketingLink") as string) || null;
-  const locationLink = (formData.get("locationLink") as string) || null;
-  const qrCodeUrl = (formData.get("qrCodeUrl") as string) || null;
-  const tag = (formData.get("tag") as string) || "Regional";
-  const status = (formData.get("status") as string) || "Draft";
+  const hackathonId = (formData.get("id") as string || "").trim();
+  const title = (formData.get("title") as string || "").trim();
+  const description = (formData.get("description") as string || "").trim();
+  const startDateStr = (formData.get("startDate") as string || "").trim();
+  const endDateStr = (formData.get("endDate") as string || "").trim();
+  const location = (formData.get("location") as string || "").trim() || "Online";
+  const prizePool = (formData.get("prizePool") as string || "").trim() || "$0";
+  const bannerUrl = (formData.get("bannerUrl") as string || "").trim() || null;
+  const ticketingLink = (formData.get("ticketingLink") as string || "").trim() || null;
+  const locationLink = (formData.get("locationLink") as string || "").trim() || null;
+  const qrCodeUrl = (formData.get("qrCodeUrl") as string || "").trim() || null;
+  const tag = (formData.get("tag") as string || "").trim() || "Regional";
+  const status = (formData.get("status") as string || "").trim() || "Draft";
 
   const ticketTiersJson = formData.get("ticketTiers") as string;
   let parsedTicketTiers: Array<{ name: string; priceINR: number }> = [];
@@ -197,19 +198,16 @@ export async function updateHackathonAction(prevState: any, formData: FormData) 
       return { success: false, error: "Hackathon not found or unauthorized." };
     }
 
-    // Update in transaction: delete old prizes, update hackathon, create new prizes
+    // Update in transaction: delete old prizes & tiers, update hackathon, create new prizes & tiers
     await prisma.$transaction(async (tx) => {
-      // Delete existing prizes
       await tx.prize.deleteMany({
         where: { hackathonId },
       });
 
-      // Delete existing ticket tiers
       await tx.ticketTier.deleteMany({
         where: { hackathonId },
       });
 
-      // Update hackathon details & create new prizes & tiers
       await tx.hackathon.update({
         where: { id: hackathonId },
         data: {
@@ -226,17 +224,21 @@ export async function updateHackathonAction(prevState: any, formData: FormData) 
           tag,
           status,
           prizes: {
-            create: parsedPrizes.map((p) => ({
-              title: p.title,
-              value: p.value,
-              description: p.description || null,
-            })),
+            create: parsedPrizes
+              .filter((p) => p.title?.trim())
+              .map((p) => ({
+                title: p.title.trim(),
+                value: (p.value || "").trim(),
+                description: p.description?.trim() || null,
+              })),
           },
           ticketTiers: {
-            create: parsedTicketTiers.map((t) => ({
-              name: t.name,
-              priceINR: Math.max(0, Math.round(Number(t.priceINR) || 0)),
-            })),
+            create: parsedTicketTiers
+              .filter((t) => t.name?.trim())
+              .map((t) => ({
+                name: t.name.trim(),
+                priceINR: Math.max(0, Math.round(Number(t.priceINR) || 0)),
+              })),
           },
         },
       });
@@ -261,10 +263,21 @@ export async function updateHackathonDatesAction(
 ) {
   const organizerId = await getSessionUserId();
   if (!organizerId) {
-    return { success: false, error: "Unauthorized." };
+    return { success: false, error: "Unauthorized: Organizer login required." };
   }
 
   try {
+    const startDate = new Date(startDateISO);
+    const endDate = new Date(endDateISO);
+
+    if (isNaN(startDate.getTime()) || isNaN(endDate.getTime())) {
+      return { success: false, error: "Invalid date format." };
+    }
+
+    if (startDate > endDate) {
+      return { success: false, error: "Start date must be before or equal to end date." };
+    }
+
     const existing = await prisma.hackathon.findUnique({
       where: { id: hackathonId },
     });
@@ -276,8 +289,8 @@ export async function updateHackathonDatesAction(
     await prisma.hackathon.update({
       where: { id: hackathonId },
       data: {
-        startDate: new Date(startDateISO),
-        endDate: new Date(endDateISO),
+        startDate,
+        endDate,
       },
     });
 
@@ -289,4 +302,5 @@ export async function updateHackathonDatesAction(
     return { success: false, error: "Failed to update hackathon timer." };
   }
 }
+
 

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Award, CheckCircle, Clock, Video, UserCheck, ShieldCheck, Sparkles, Loader2 } from "lucide-react";
+import { Award, CheckCircle, Clock, Video, UserCheck, ShieldCheck, Sparkles, Loader2, X } from "lucide-react";
 import { fetchJudgesAction, requestJuryConsultationAction, fetchJuryRequestsAction } from "../../../actions/team-feature-actions";
 
 interface Judge {
@@ -240,9 +240,9 @@ export default function TeamJuryPage() {
                   setShowModal(false);
                   setSelectedJudge(null);
                 }}
-                className="text-zinc-400 hover:text-zinc-650 font-bold cursor-pointer text-xs"
+                className="text-zinc-400 hover:text-zinc-650 cursor-pointer p-1"
               >
-                ✖
+                <X className="w-4 h-4" />
               </button>
             </div>
             

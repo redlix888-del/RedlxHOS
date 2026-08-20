@@ -5,16 +5,25 @@ import { hashPassword, verifyPassword, setSessionCookie, clearSessionCookie } fr
 import { redirect } from "next/navigation";
 
 export async function signUpAction(prevState: any, formData: FormData) {
-  const fullName = formData.get("fullName") as string;
-  const email = formData.get("email") as string;
-  const designation = formData.get("designation") as string;
-  const phone = (formData.get("phone") as string) || null;
-  const organizationName = formData.get("organizationName") as string;
-  const website = (formData.get("website") as string) || null;
-  const password = formData.get("password") as string;
+  const fullName = (formData.get("fullName") as string || "").trim();
+  const email = (formData.get("email") as string || "").trim().toLowerCase();
+  const designation = (formData.get("designation") as string || "").trim();
+  const phone = (formData.get("phone") as string || "").trim() || null;
+  const organizationName = (formData.get("organizationName") as string || "").trim();
+  const website = (formData.get("website") as string || "").trim() || null;
+  const password = formData.get("password") as string || "";
 
   if (!fullName || !email || !designation || !organizationName || !password) {
     return { success: false, error: "Missing required fields." };
+  }
+
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  if (!emailRegex.test(email)) {
+    return { success: false, error: "Please enter a valid email address." };
+  }
+
+  if (password.length < 8) {
+    return { success: false, error: "Password must be at least 8 characters." };
   }
 
   try {
@@ -42,7 +51,6 @@ export async function signUpAction(prevState: any, formData: FormData) {
 
     await setSessionCookie(organizer.id);
   } catch (err: any) {
-    // If it's a redirect error, rethrow it so Next.js handles the redirect correctly
     if (err.digest && err.digest.startsWith("NEXT_REDIRECT")) {
       throw err;
     }
@@ -54,8 +62,8 @@ export async function signUpAction(prevState: any, formData: FormData) {
 }
 
 export async function signInAction(prevState: any, formData: FormData) {
-  const email = formData.get("email") as string;
-  const password = formData.get("password") as string;
+  const email = (formData.get("email") as string || "").trim().toLowerCase();
+  const password = formData.get("password") as string || "";
 
   if (!email || !password) {
     return { success: false, error: "Please enter your email and password." };
@@ -77,7 +85,6 @@ export async function signInAction(prevState: any, formData: FormData) {
 
     await setSessionCookie(organizer.id);
   } catch (err: any) {
-    // If it's a redirect error, rethrow it so Next.js handles the redirect correctly
     if (err.digest && err.digest.startsWith("NEXT_REDIRECT")) {
       throw err;
     }
@@ -92,3 +99,4 @@ export async function logOutAction() {
   await clearSessionCookie();
   redirect("/sign-in");
 }
+

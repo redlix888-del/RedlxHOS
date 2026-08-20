@@ -228,17 +228,21 @@ model ProjectSubmission {
 }
 
 model Message {
-  id           String    @id @default(uuid())
-  content      String
-  senderName   String
-  senderAvatar String
-  senderRole   String
-  channelId    String
-  teamId       String?
-  team         Team?     @relation(fields: [teamId], references: [id], onDelete: Cascade)
-  hackathonId  String
-  hackathon    Hackathon @relation(fields: [hackathonId], references: [id], onDelete: Cascade)
-  createdAt    DateTime  @default(now())
+  id            String    @id @default(uuid())
+  content       String
+  senderId      String?
+  senderName    String
+  senderAvatar  String
+  senderRole    String
+  channelId     String
+  recipientId   String?
+  recipientName String?
+  isPrivate     Boolean   @default(false)
+  teamId        String?
+  team          Team?     @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  hackathonId   String
+  hackathon     Hackathon @relation(fields: [hackathonId], references: [id], onDelete: Cascade)
+  createdAt     DateTime  @default(now())
 }
 
 model JuryRequest {

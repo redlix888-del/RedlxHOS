@@ -1,7 +1,7 @@
 "use server";
 
 import { prisma } from "../../lib/db";
-import { getSessionUser } from "../../lib/auth";
+import { getSessionUser, setJudgeSessionCookie, clearJudgeSessionCookie } from "../../lib/auth";
 import { revalidatePath } from "next/cache";
 
 export async function addJudge(
@@ -12,12 +12,21 @@ export async function addJudge(
 ) {
   try {
     const user = await getSessionUser();
-    if (!user) throw new Error("Unauthorized");
+    if (!user) throw new Error("Unauthorized: Organizer login required.");
+
+    const cleanHackathonId = hackathonId.trim();
+    const cleanName = name.trim();
+    const cleanDescription = (description || "").trim();
+    const cleanImageUrl = (imageUrl || "").trim() || null;
+
+    if (!cleanHackathonId || !cleanName) {
+      throw new Error("Judge name and hackathon ID are required.");
+    }
 
     // Verify organizer owns this hackathon
     const hackathon = await prisma.hackathon.findFirst({
       where: {
-        id: hackathonId,
+        id: cleanHackathonId,
         organizerId: user.id,
       },
     });
@@ -26,10 +35,10 @@ export async function addJudge(
 
     const judge = await prisma.judge.create({
       data: {
-        hackathonId,
-        name,
-        description,
-        imageUrl: imageUrl || null,
+        hackathonId: cleanHackathonId,
+        name: cleanName,
+        description: cleanDescription,
+        imageUrl: cleanImageUrl,
       },
     });
 
@@ -45,7 +54,7 @@ export async function addJudge(
 export async function deleteJudge(judgeId: string) {
   try {
     const user = await getSessionUser();
-    if (!user) throw new Error("Unauthorized");
+    if (!user) throw new Error("Unauthorized: Organizer login required.");
 
     // Verify organizer owns the related hackathon
     const judge = await prisma.judge.findUnique({
@@ -73,12 +82,19 @@ export async function deleteJudge(judgeId: string) {
 export async function addJudgingGuideline(hackathonId: string, content: string) {
   try {
     const user = await getSessionUser();
-    if (!user) throw new Error("Unauthorized");
+    if (!user) throw new Error("Unauthorized: Organizer login required.");
+
+    const cleanHackathonId = hackathonId.trim();
+    const cleanContent = content.trim();
+
+    if (!cleanHackathonId || !cleanContent) {
+      throw new Error("Guideline content is required.");
+    }
 
     // Verify organizer owns this hackathon
     const hackathon = await prisma.hackathon.findFirst({
       where: {
-        id: hackathonId,
+        id: cleanHackathonId,
         organizerId: user.id,
       },
     });
@@ -87,8 +103,8 @@ export async function addJudgingGuideline(hackathonId: string, content: string) 
 
     const guideline = await prisma.judgingGuideline.create({
       data: {
-        hackathonId,
-        content,
+        hackathonId: cleanHackathonId,
+        content: cleanContent,
       },
     });
 
@@ -104,7 +120,7 @@ export async function addJudgingGuideline(hackathonId: string, content: string) 
 export async function deleteJudgingGuideline(guidelineId: string) {
   try {
     const user = await getSessionUser();
-    if (!user) throw new Error("Unauthorized");
+    if (!user) throw new Error("Unauthorized: Organizer login required.");
 
     // Verify organizer owns the related hackathon
     const guideline = await prisma.judgingGuideline.findUnique({
@@ -132,7 +148,7 @@ export async function deleteJudgingGuideline(guidelineId: string) {
 export async function generateJudgeAccessCode(judgeId: string) {
   try {
     const user = await getSessionUser();
-    if (!user) throw new Error("Unauthorized");
+    if (!user) throw new Error("Unauthorized: Organizer login required.");
 
     // Verify organizer owns the related hackathon
     const judge = await prisma.judge.findUnique({
@@ -183,17 +199,16 @@ export async function generateJudgeAccessCode(judgeId: string) {
   }
 }
 
-import { setJudgeSessionCookie, clearJudgeSessionCookie } from "../../lib/auth";
-
 export async function loginJudgeAction(code: string) {
   try {
-    if (!code || code.trim().length !== 6) {
+    const trimmedCode = (code || "").trim();
+    if (!trimmedCode || !/^\d{6}$/.test(trimmedCode)) {
       throw new Error("Access code must be exactly 6 digits.");
     }
 
     const judge = await prisma.judge.findFirst({
       where: {
-        loginCode: code.trim(),
+        loginCode: trimmedCode,
         loginCodeExpiresAt: {
           gte: new Date(),
         },
@@ -204,7 +219,7 @@ export async function loginJudgeAction(code: string) {
       throw new Error("Access code is invalid or has expired (validity is 5 minutes).");
     }
 
-    // Set cookie session for judge
+    // Set signed cookie session for judge
     await setJudgeSessionCookie(judge.id);
 
     return { success: true };
@@ -221,4 +236,5 @@ export async function logoutJudgeAction() {
     return { success: false, error: error.message };
   }
 }
+
 

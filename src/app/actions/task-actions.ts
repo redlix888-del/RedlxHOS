@@ -13,26 +13,37 @@ export async function createTaskAction(
   assigneeRole: string
 ) {
   const sessionTeam = await getSessionTeam();
-  if (!sessionTeam || sessionTeam.id !== teamId) {
-    throw new Error("Unauthorized");
+  const cleanTeamId = (teamId || "").trim();
+  const cleanTitle = (title || "").trim();
+  const cleanDescription = (description || "").trim();
+  const cleanAssigneeId = (assigneeId || "").trim();
+  const cleanAssigneeName = (assigneeName || "").trim();
+  const cleanAssigneeRole = (assigneeRole || "Teammate").trim();
+
+  if (!sessionTeam || sessionTeam.id !== cleanTeamId) {
+    throw new Error("Unauthorized: Invalid team session.");
+  }
+
+  if (!cleanTitle) {
+    throw new Error("Task title is required.");
   }
 
   await prisma.task.create({
     data: {
-      teamId,
-      title,
-      description,
+      teamId: cleanTeamId,
+      title: cleanTitle,
+      description: cleanDescription,
       status: "TO_DO",
-      assigneeId,
-      assigneeName,
-      assigneeRole,
+      assigneeId: cleanAssigneeId,
+      assigneeName: cleanAssigneeName,
+      assigneeRole: cleanAssigneeRole,
     },
   });
 
   await prisma.taskLog.create({
     data: {
-      teamId,
-      message: `Created task "${title}" assigned to ${assigneeName} (${assigneeRole})`,
+      teamId: cleanTeamId,
+      message: `Created task "${cleanTitle}" assigned to ${cleanAssigneeName} (${cleanAssigneeRole})`,
     },
   });
 
@@ -47,27 +58,37 @@ export async function moveTaskAction(
   completedByRole: string | null
 ) {
   const sessionTeam = await getSessionTeam();
-  if (!sessionTeam || sessionTeam.id !== teamId) {
-    throw new Error("Unauthorized");
+  const cleanTeamId = (teamId || "").trim();
+  const cleanTaskId = (taskId || "").trim();
+  const validStatuses = ["TO_DO", "IN_PROGRESS", "COMPLETED"];
+
+  if (!validStatuses.includes(targetStatus)) {
+    throw new Error("Invalid task status.");
+  }
+
+  if (!sessionTeam || sessionTeam.id !== cleanTeamId) {
+    throw new Error("Unauthorized: Invalid team session.");
   }
 
   const task = await prisma.task.findUnique({
-    where: { id: taskId },
+    where: { id: cleanTaskId },
   });
 
-  if (!task || task.teamId !== teamId) return;
+  if (!task || task.teamId !== cleanTeamId) {
+    throw new Error("Task not found or access denied.");
+  }
 
   const completedData = {
     completedById: targetStatus === "COMPLETED" ? task.assigneeId : null,
-    completedByName: targetStatus === "COMPLETED" ? (completedByName || task.assigneeName) : null,
-    completedByRole: targetStatus === "COMPLETED" ? (completedByRole || task.assigneeRole) : null,
+    completedByName: targetStatus === "COMPLETED" ? ((completedByName || task.assigneeName).trim()) : null,
+    completedByRole: targetStatus === "COMPLETED" ? ((completedByRole || task.assigneeRole).trim()) : null,
     completedAt: targetStatus === "COMPLETED"
       ? new Date().toLocaleTimeString("en-US", { hour: "numeric", minute: "numeric", second: "numeric" })
       : null,
   };
 
   await prisma.task.update({
-    where: { id: taskId },
+    where: { id: cleanTaskId },
     data: {
       status: targetStatus,
       ...completedData,
@@ -83,7 +104,7 @@ export async function moveTaskAction(
 
   await prisma.taskLog.create({
     data: {
-      teamId,
+      teamId: cleanTeamId,
       message: logMsg,
     },
   });
@@ -93,28 +114,32 @@ export async function moveTaskAction(
 
 export async function deleteTaskAction(teamId: string, taskId: string, title: string) {
   const sessionTeam = await getSessionTeam();
-  if (!sessionTeam || sessionTeam.id !== teamId) {
-    throw new Error("Unauthorized");
+  const cleanTeamId = (teamId || "").trim();
+  const cleanTaskId = (taskId || "").trim();
+
+  if (!sessionTeam || sessionTeam.id !== cleanTeamId) {
+    throw new Error("Unauthorized: Invalid team session.");
   }
 
   const task = await prisma.task.findUnique({
-    where: { id: taskId },
+    where: { id: cleanTaskId },
   });
 
-  if (!task || task.teamId !== teamId) {
-    throw new Error("Unauthorized");
+  if (!task || task.teamId !== cleanTeamId) {
+    throw new Error("Unauthorized: Task not found or access denied.");
   }
 
   await prisma.task.delete({
-    where: { id: taskId },
+    where: { id: cleanTaskId },
   });
 
   await prisma.taskLog.create({
     data: {
-      teamId,
-      message: `Deleted task "${title}"`,
+      teamId: cleanTeamId,
+      message: `Deleted task "${(title || task.title).trim()}"`,
     },
   });
 
   revalidatePath("/team/dashboard/tasks");
 }
+
