@@ -237,13 +237,6 @@ export default function JoinTeamForm({ initialCode }: JoinTeamFormProps) {
               </form>
             )}
 
-            <div className="pt-2 border-t border-zinc-150 flex items-center justify-between text-xs text-zinc-500">
-              <span>Are you a Team Lead?</span>
-              <Link href="/team/login" className="text-[#E61E32] font-semibold hover:underline">
-                Team Login
-              </Link>
-            </div>
-
           </div>
         </div>
 

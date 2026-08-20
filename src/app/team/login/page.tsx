@@ -157,13 +157,6 @@ function LoginFormContent() {
               </button>
             </form>
 
-            <div className="mt-4 pt-3 border-t border-zinc-150 flex items-center justify-between text-xs text-zinc-500">
-              <span>Organizer access?</span>
-              <Link href="/sign-in" className="text-zinc-900 font-semibold hover:underline">
-                Organizer Login
-              </Link>
-            </div>
-
           </div>
         </div>
 

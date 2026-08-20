@@ -175,16 +175,6 @@ export default function TeamSignUpForm({ hackathon }: TeamSignUpFormProps) {
               </button>
             </form>
 
-            <div className="pt-2 border-t border-zinc-150 flex items-center justify-between text-xs text-zinc-500">
-              <span>Already registered?</span>
-              <Link
-                href={`/team/login?hackathonId=${hackathon.id}`}
-                className="text-[#E61E32] font-semibold hover:underline"
-              >
-                Sign In to Team
-              </Link>
-            </div>
-
           </div>
         </div>
 

@@ -110,13 +110,6 @@ export default function JudgeLoginForm() {
               </button>
             </form>
 
-            <div className="pt-3 border-t border-zinc-150 flex items-center justify-between text-xs text-zinc-500">
-              <span>Return to login options</span>
-              <Link href="/team/login" className="text-zinc-900 font-semibold hover:underline">
-                Team Login
-              </Link>
-            </div>
-
           </div>
         </div>
 
