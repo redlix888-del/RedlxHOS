@@ -42,34 +42,34 @@ export default function JudgeLoginForm() {
   };
 
   return (
-    <section className="h-screen max-h-screen overflow-hidden bg-white p-3 text-black antialiased [font-synthesis:none] dark:bg-[#050505] dark:text-white">
+    <section className="h-screen max-h-screen overflow-hidden bg-zinc-50 p-3 text-zinc-900 antialiased [font-synthesis:none]">
       <div className="grid h-[calc(100vh-1.5rem)] gap-4 lg:gap-6 lg:grid-cols-[1.18fr_0.82fr] overflow-hidden">
         
-        {/* Left Form Card */}
-        <div className="flex h-full flex-col justify-between overflow-y-auto rounded-xl border border-black/15 bg-white px-6 py-6 sm:px-10 dark:border-white/10 dark:bg-[#0a0a0a] lg:px-12 lg:py-8 xl:px-16">
+        {/* Left Form Card - Crisp Light */}
+        <div className="flex h-full flex-col justify-between overflow-y-auto rounded-xl border border-zinc-200 bg-white px-6 py-6 sm:px-10 shadow-sm lg:px-12 lg:py-8 xl:px-16">
           <div className="mx-auto w-full max-w-[500px] my-auto">
             
             {/* Header & Breadcrumbs */}
             <div>
-              <nav aria-label="Breadcrumb" className="flex items-center gap-1.5 text-xs text-black/50 dark:text-white/50 mb-4">
-                <Link href="/" className="inline-flex items-center gap-1 hover:text-black dark:hover:text-white transition-colors font-medium">
+              <nav aria-label="Breadcrumb" className="flex items-center gap-1.5 text-xs text-zinc-500 mb-4">
+                <Link href="/" className="inline-flex items-center gap-1 hover:text-zinc-900 transition-colors font-medium">
                   <ArrowLeft className="w-3.5 h-3.5" />
                   <span>Home</span>
                 </Link>
-                <span className="text-black/20 dark:text-white/20">/</span>
-                <span className="text-black dark:text-white font-medium">Jury Access</span>
+                <span className="text-zinc-300">/</span>
+                <span className="text-zinc-800 font-medium">Jury Access</span>
               </nav>
-              <h1 className="text-2xl sm:text-3xl lg:text-[34px] font-medium tracking-tight lg:leading-[1.15]">
+              <h1 className="text-2xl sm:text-3xl lg:text-[34px] font-medium tracking-tight text-zinc-950 lg:leading-[1.15]">
                 Enter Jury Access Code
               </h1>
-              <p className="mt-2 text-sm sm:text-base text-black/60 dark:text-white/55 font-normal">
+              <p className="mt-2 text-sm sm:text-base text-zinc-500 font-normal">
                 Enter the 6-digit dynamic access code provided by your hackathon organizer
               </p>
             </div>
 
             {/* Error banner */}
             {error && (
-              <div className="bg-red-50 dark:bg-red-950/40 text-red-600 dark:text-red-400 text-xs p-3 border border-red-200 dark:border-red-800/50 my-4 font-medium rounded-md">
+              <div className="bg-red-50 text-red-700 text-xs p-3.5 border border-red-200 my-4 font-medium rounded-xl">
                 {error}
               </div>
             )}
@@ -87,14 +87,14 @@ export default function JudgeLoginForm() {
                 />
               </div>
 
-              <div className="bg-zinc-50 dark:bg-white/5 border border-zinc-200 dark:border-white/10 p-3 rounded-lg text-xs text-zinc-500 leading-relaxed">
+              <div className="bg-zinc-50 border border-zinc-200 p-3 rounded-lg text-xs text-zinc-500 leading-relaxed">
                 <span className="font-semibold text-[#E61E32]">Note:</span> Codes are valid for exactly 5 minutes from generation. Please request a new code from the organizer if yours has expired.
               </div>
 
               <button
                 type="submit"
                 disabled={isPending || code.length !== 6}
-                className="mt-4 flex h-12 w-full items-center justify-center gap-2 rounded-xl border border-black/40 bg-black text-sm sm:text-base font-medium text-white transition-colors hover:bg-black/85 disabled:opacity-50 disabled:cursor-not-allowed dark:border-white/40 dark:bg-white dark:text-black dark:hover:bg-white/85 cursor-pointer shadow-sm"
+                className="mt-4 flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-zinc-950 text-sm sm:text-base font-medium text-white transition-all hover:bg-zinc-800 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer shadow-sm"
               >
                 {isPending ? (
                   <>
@@ -110,9 +110,9 @@ export default function JudgeLoginForm() {
               </button>
             </form>
 
-            <div className="pt-3 border-t border-black/10 dark:border-white/10 flex items-center justify-between text-xs text-black/50 dark:text-white/40">
+            <div className="pt-3 border-t border-zinc-150 flex items-center justify-between text-xs text-zinc-500">
               <span>Return to login options</span>
-              <Link href="/team/login" className="text-black dark:text-white font-semibold hover:underline">
+              <Link href="/team/login" className="text-zinc-900 font-semibold hover:underline">
                 Team Login
               </Link>
             </div>
@@ -120,8 +120,8 @@ export default function JudgeLoginForm() {
           </div>
         </div>
 
-        {/* Right Gradient Shader Card */}
-        <div className="relative hidden lg:flex h-full overflow-hidden rounded-xl bg-black p-6 text-white sm:p-8 lg:p-10">
+        {/* Right Vibrant Gradient Shader Card */}
+        <div className="relative hidden lg:flex h-full overflow-hidden rounded-xl bg-gradient-to-br from-[#E61E32] via-[#b81424] to-[#800b17] p-6 text-white shadow-sm sm:p-8 lg:p-10">
           <GrainGradient
             speed={1}
             scale={1}
@@ -133,13 +133,13 @@ export default function JudgeLoginForm() {
             noise={0.25}
             shape="corners"
             frame={2854.5}
-            colors={["#FFFFFF", "#E61E32", "#E61E32", "#FFFFFF"]}
-            colorBack="#00000000"
-            className="absolute inset-0 bg-black"
+            colors={["#FFFFFF", "#FFA0A8", "#E61E32", "#FFFFFF"]}
+            colorBack="#E61E32"
+            className="absolute inset-0 opacity-90"
           />
 
           <div className="relative z-10 flex h-full w-full max-w-[440px] flex-col justify-between">
-            <h2 className="pt-0 text-3xl font-medium tracking-tight text-white sm:text-4xl lg:pt-8 lg:text-[42px] lg:leading-[1.08]">
+            <h2 className="pt-0 text-3xl font-medium tracking-tight text-white drop-shadow-sm sm:text-4xl lg:pt-8 lg:text-[42px] lg:leading-[1.08]">
               Evaluate fast,
               <br />
               Score precisely
