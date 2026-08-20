@@ -1,10 +1,9 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import {
   Send,
   Hash,
-  Users,
   Shield,
   Lock,
   Globe,
@@ -13,7 +12,23 @@ import {
   Loader2,
   Sparkles,
   Info,
-  Gavel
+  Gavel,
+  Search,
+  ListFilter,
+  Paperclip,
+  Smile,
+  Mic,
+  Video,
+  Phone,
+  Image,
+  Camera,
+  File,
+  UserRound,
+  ChartBarIncreasing,
+  Brush,
+  MessageSquareDot,
+  Star,
+  Users,
 } from "lucide-react";
 import {
   fetchMessagesAction,
@@ -22,6 +37,18 @@ import {
   getCurrentUserAction,
   fetchChatContactsAction,
 } from "../../../actions/team-feature-actions";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuGroup,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 interface Message {
   id: string;
@@ -41,6 +68,7 @@ interface Channel {
   scope: "public" | "squad" | "dm";
   recipientId?: string;
   recipientName?: string;
+  avatarUrl?: string;
 }
 
 interface ChatContact {
@@ -55,20 +83,20 @@ interface ChatContact {
 const getBubbleColors = (name: string, isMe: boolean) => {
   if (isMe) {
     return {
-      bg: "bg-red-50/70",
-      border: "border-red-200",
-      senderText: "text-[#E61E32]",
+      bg: "bg-red-500 text-white",
+      border: "border-red-600",
+      senderText: "text-white/90",
+      badge: "bg-white/20 text-white",
+      timeText: "text-white/80",
+      content: "text-white",
     };
   }
 
   const themes = [
-    { bg: "bg-sky-50/70", border: "border-sky-200", senderText: "text-sky-700" },
-    { bg: "bg-purple-50/70", border: "border-purple-200", senderText: "text-purple-700" },
-    { bg: "bg-emerald-50/70", border: "border-emerald-200", senderText: "text-emerald-700" },
-    { bg: "bg-amber-50/70", border: "border-amber-200", senderText: "text-amber-700" },
-    { bg: "bg-teal-50/70", border: "border-teal-200", senderText: "text-teal-700" },
-    { bg: "bg-rose-50/70", border: "border-rose-200", senderText: "text-rose-700" },
-    { bg: "bg-blue-50/70", border: "border-blue-200", senderText: "text-blue-700" },
+    { bg: "bg-white text-zinc-900", border: "border-zinc-200", senderText: "text-sky-700", badge: "bg-sky-50 text-sky-700", timeText: "text-zinc-400", content: "text-zinc-800" },
+    { bg: "bg-white text-zinc-900", border: "border-zinc-200", senderText: "text-purple-700", badge: "bg-purple-50 text-purple-700", timeText: "text-zinc-400", content: "text-zinc-800" },
+    { bg: "bg-white text-zinc-900", border: "border-zinc-200", senderText: "text-emerald-700", badge: "bg-emerald-50 text-emerald-700", timeText: "text-zinc-400", content: "text-zinc-800" },
+    { bg: "bg-white text-zinc-900", border: "border-zinc-200", senderText: "text-amber-700", badge: "bg-amber-50 text-amber-700", timeText: "text-zinc-400", content: "text-zinc-800" },
   ];
 
   let hash = 0;
@@ -99,30 +127,33 @@ export default function TeamMessagesPage() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isSending, setIsSending] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [filterType, setFilterType] = useState<"all" | "squad" | "public" | "dm">("all");
   const [channelCounts, setChannelCounts] = useState<Record<string, number>>({});
   const [currentUser, setCurrentUser] = useState<{ fullName: string; email: string; avatarUrl: string | null } | null>(null);
   const [contacts, setContacts] = useState<{ squad: ChatContact[]; judges: ChatContact[] }>({ squad: [], judges: [] });
-  
-  const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const prevMessagesLengthRef = useRef(0);
 
   // Static Public Channels
   const publicChannels: Channel[] = [
     {
       id: "announcements",
       name: "announcements",
-      description: "Official broadcasts from Hackathon Organizers (Public to all participants)",
+      description: "Official broadcasts from Hackathon Organizers",
       scope: "public",
     },
     {
       id: "public-general",
       name: "public-lounge",
-      description: "Public hackathon chat for networking across all registered teams",
+      description: "Public hackathon chat across all teams",
       scope: "public",
     },
     {
       id: "tech-support",
       name: "tech-support",
-      description: "Ask questions to mentors, tech crew, and event staff (Public)",
+      description: "Ask questions to mentors & tech crew",
       scope: "public",
     },
   ];
@@ -131,11 +162,10 @@ export default function TeamMessagesPage() {
   const squadChannel: Channel = {
     id: "team-squad",
     name: "squad-sync",
-    description: "Private team sync room — Strictly confidential to your team members",
+    description: "Private team sync room — Strictly confidential to squad",
     scope: "squad",
   };
 
-  // Find active channel configuration (or dynamically create DM channel config)
   const getActiveChannelConfig = (): Channel => {
     if (activeChannelId === squadChannel.id) return squadChannel;
     const pub = publicChannels.find((c) => c.id === activeChannelId);
@@ -148,10 +178,11 @@ export default function TeamMessagesPage() {
       return {
         id: activeChannelId,
         name: target ? target.name : "Direct Message",
-        description: `Confidential 1-on-1 conversation with ${target?.name || "recipient"}. Visible only to you two.`,
+        description: `Confidential 1-on-1 with ${target?.name || "recipient"}`,
         scope: "dm",
         recipientId: target?.id || targetId,
         recipientName: target?.name || "Direct Recipient",
+        avatarUrl: target?.avatarUrl || undefined,
       };
     }
 
@@ -160,9 +191,11 @@ export default function TeamMessagesPage() {
 
   const currentChannel = getActiveChannelConfig();
 
-  // Scroll to bottom smoothly
+  // Scroll to bottom without scrolling the parent dashboard window
   const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    if (scrollContainerRef.current) {
+      scrollContainerRef.current.scrollTop = scrollContainerRef.current.scrollHeight;
+    }
   };
 
   // Fetch messages from backend
@@ -171,18 +204,18 @@ export default function TeamMessagesPage() {
     try {
       const activeConf = getActiveChannelConfig();
       const data = await fetchMessagesAction(channelId, activeConf.recipientId);
-      setMessages(
-        data.map((msg) => ({
-          id: msg.id,
-          senderName: msg.senderName,
-          senderAvatar: msg.senderAvatar,
-          senderRole: msg.senderRole,
-          content: msg.content,
-          recipientName: msg.recipientName,
-          isPrivate: msg.isPrivate,
-          createdAt: new Date(msg.createdAt),
-        }))
-      );
+      const parsed = data.map((msg) => ({
+        id: msg.id,
+        senderName: msg.senderName,
+        senderAvatar: msg.senderAvatar,
+        senderRole: msg.senderRole,
+        content: msg.content,
+        recipientName: msg.recipientName,
+        isPrivate: msg.isPrivate,
+        createdAt: new Date(msg.createdAt),
+      }));
+
+      setMessages(parsed);
     } catch (err) {
       console.error("Error loading messages:", err);
     } finally {
@@ -204,7 +237,7 @@ export default function TeamMessagesPage() {
     }
   };
 
-  // Initialize
+  // Initial Load
   useEffect(() => {
     const init = async () => {
       setIsLoading(true);
@@ -225,17 +258,21 @@ export default function TeamMessagesPage() {
     };
     init();
 
-    // Auto-refresh interval every 3 seconds for live chat feel
+    // Auto-refresh interval (polling) without hijacking scroll
     const interval = setInterval(() => {
       loadMessages(activeChannelId, false);
       loadChannelCounts();
-    }, 3000);
+    }, 4000);
 
     return () => clearInterval(interval);
   }, [activeChannelId]);
 
+  // Only scroll down when messages count changes or channel changes
   useEffect(() => {
-    scrollToBottom();
+    if (messages.length !== prevMessagesLengthRef.current) {
+      scrollToBottom();
+      prevMessagesLengthRef.current = messages.length;
+    }
   }, [messages]);
 
   const handleSendMessage = async (e: React.FormEvent) => {
@@ -273,6 +310,9 @@ export default function TeamMessagesPage() {
         ...prev,
         [activeChannelId]: (prev[activeChannelId] || 0) + 1,
       }));
+
+      // Immediate scroll down on send
+      setTimeout(scrollToBottom, 50);
     } catch (err: any) {
       console.error("Failed to send message:", err);
       alert(err.message || "Failed to send message. Please try again.");
@@ -281,215 +321,311 @@ export default function TeamMessagesPage() {
     }
   };
 
-  // Filter out current user from direct message list
   const dmTeammates = contacts.squad.filter(
     (c) => c.name !== currentUser?.fullName && c.email !== currentUser?.email
   );
 
+  // Search and Filter logic for list
+  const matchesSearch = (name: string) => {
+    if (!searchQuery.trim()) return true;
+    return name.toLowerCase().includes(searchQuery.toLowerCase());
+  };
+
   return (
-    <div className="flex-grow flex flex-col md:flex-row h-[calc(100vh-14px-60px-44px)] bg-zinc-50 border-t border-zinc-200">
+    <div className="h-[calc(100vh-3.5rem-3.75rem)] w-full flex flex-col md:flex-row bg-white overflow-hidden">
       
-      {/* ── Channel & DM Sidebar ── */}
-      <aside className="w-full md:w-72 bg-white border-b md:border-b-0 md:border-r border-zinc-200 flex flex-col shrink-0">
-        <div className="p-4 border-b border-zinc-200 flex items-center justify-between bg-zinc-50/50">
-          <div className="flex items-center gap-2">
-            <MessageSquare className="w-4 h-4 text-[#E61E32]" />
-            <h3 className="text-sm font-bold text-zinc-900 tracking-tight">HackOS Chat Hub</h3>
-          </div>
-          <span className="text-[10px] bg-zinc-200/70 text-zinc-600 px-2 py-0.5 font-bold uppercase rounded-full">
-            Role-Scoped
-          </span>
-        </div>
+      {/* ── Left Panel: Chat & Channel List (WhatsApp / Slack Style) ── */}
+      <aside className="w-full md:w-80 lg:w-96 flex flex-col h-full border-r border-zinc-200 bg-zinc-50/70 shrink-0">
         
-        <nav className="flex-1 p-3 space-y-4 overflow-y-auto">
+        {/* Top Header */}
+        <div className="h-14 px-4 border-b border-zinc-200 flex items-center justify-between bg-white shrink-0">
+          <div className="flex items-center gap-2">
+            <h2 className="text-base font-semibold text-zinc-950 tracking-tight">Chats</h2>
+            <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-zinc-100 text-zinc-600 border border-zinc-200">
+              Live
+            </span>
+          </div>
+
+          <div className="flex items-center gap-1">
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" size="icon" className="h-8 w-8 text-zinc-600 hover:text-zinc-950">
+                  <ListFilter className="w-4 h-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-48">
+                <DropdownMenuLabel className="text-xs">Filter Chats</DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                <DropdownMenuGroup>
+                  <DropdownMenuItem onClick={() => setFilterType("all")} className="text-xs cursor-pointer">
+                    <MessageSquareDot className="w-3.5 h-3.5 mr-2" /> All Chats
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => setFilterType("squad")} className="text-xs cursor-pointer">
+                    <Shield className="w-3.5 h-3.5 mr-2 text-[#E61E32]" /> Squad Only
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => setFilterType("public")} className="text-xs cursor-pointer">
+                    <Globe className="w-3.5 h-3.5 mr-2 text-emerald-600" /> Public Channels
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => setFilterType("dm")} className="text-xs cursor-pointer">
+                    <User className="w-3.5 h-3.5 mr-2 text-purple-600" /> Direct Messages
+                  </DropdownMenuItem>
+                </DropdownMenuGroup>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
+        </div>
+
+        {/* Search Bar */}
+        <div className="p-3 border-b border-zinc-200 bg-white/80 shrink-0">
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-400" />
+            <Input
+              type="text"
+              placeholder="Search or start new chat"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="pl-9 h-9 bg-zinc-100 border-zinc-200 focus-visible:bg-white text-xs rounded-lg"
+            />
+          </div>
+        </div>
+
+        {/* Channels & Contacts Scroll Area */}
+        <div className="flex-1 overflow-y-auto divide-y divide-zinc-100">
           
-          {/* 1. SQUAD PRIVATE SYNC */}
-          <div>
-            <div className="flex items-center gap-1.5 px-2 py-1 text-[10px] font-black uppercase tracking-wider text-zinc-400">
-              <Lock className="w-3 h-3 text-[#E61E32]" />
-              <span>Squad Private Sync</span>
-            </div>
-            <div className="mt-1 space-y-1">
-              <button
-                onClick={() => setActiveChannelId(squadChannel.id)}
-                className={`w-full flex items-center gap-2 px-3 py-2 text-xs font-semibold tracking-tight transition-all cursor-pointer border ${
-                  activeChannelId === squadChannel.id
-                    ? "bg-red-50 text-[#E61E32] border-red-200 shadow-sm"
-                    : "text-zinc-700 bg-zinc-50/50 border-transparent hover:bg-zinc-100 hover:text-zinc-900"
-                }`}
-              >
-                <Shield className={`w-3.5 h-3.5 shrink-0 ${activeChannelId === squadChannel.id ? "text-[#E61E32]" : "text-zinc-500"}`} />
-                <span className="truncate flex-1 text-left font-bold">{squadChannel.name}</span>
-                <span className="text-[9px] bg-red-100/80 text-[#E61E32] px-1.5 py-0.5 rounded font-black uppercase">
-                  Squad Only
-                </span>
-              </button>
-            </div>
-          </div>
-
-          {/* 2. PUBLIC HACKATHON BROADCASTS */}
-          <div>
-            <div className="flex items-center gap-1.5 px-2 py-1 text-[10px] font-black uppercase tracking-wider text-zinc-400">
-              <Globe className="w-3 h-3 text-emerald-600" />
-              <span>Public Hackathon Channels</span>
-            </div>
-            <div className="mt-1 space-y-1">
-              {publicChannels.map((chan) => (
-                <button
-                  key={chan.id}
-                  onClick={() => setActiveChannelId(chan.id)}
-                  className={`w-full flex items-center gap-2 px-3 py-2 text-xs font-semibold tracking-tight transition-all cursor-pointer border ${
-                    activeChannelId === chan.id
-                      ? "bg-emerald-50 text-emerald-800 border-emerald-200 shadow-sm"
-                      : "text-zinc-650 bg-white border-transparent hover:bg-zinc-100 hover:text-zinc-900"
-                  }`}
-                >
-                  <Hash className={`w-3.5 h-3.5 shrink-0 ${activeChannelId === chan.id ? "text-emerald-600" : "text-zinc-400"}`} />
-                  <span className="truncate flex-1 text-left">{chan.name}</span>
-                  <span className="text-[9px] bg-zinc-100 text-zinc-500 px-1.5 py-0.5 rounded font-bold">
-                    {channelCounts[chan.id] || 0}
-                  </span>
-                </button>
-              ))}
-            </div>
-          </div>
-
-          {/* 3. DIRECT 1-ON-1 MESSAGES */}
-          <div>
-            <div className="flex items-center justify-between px-2 py-1 text-[10px] font-black uppercase tracking-wider text-zinc-400">
-              <div className="flex items-center gap-1.5">
-                <User className="w-3 h-3 text-purple-600" />
-                <span>Direct Messages (1-on-1)</span>
+          {/* 1. SQUAD PRIVATE CHANNEL */}
+          {(filterType === "all" || filterType === "squad") && matchesSearch(squadChannel.name) && (
+            <button
+              onClick={() => setActiveChannelId(squadChannel.id)}
+              className={`w-full px-4 py-3 text-left flex items-center gap-3 transition-colors cursor-pointer ${
+                activeChannelId === squadChannel.id
+                  ? "bg-red-50/80 border-l-4 border-l-[#E61E32]"
+                  : "hover:bg-zinc-100/70"
+              }`}
+            >
+              <div className="size-10 rounded-full bg-red-100 text-[#E61E32] flex items-center justify-center font-bold text-sm shrink-0 border border-red-200">
+                <Lock className="w-4 h-4" />
               </div>
-              <span className="text-[9px] text-purple-600 font-bold bg-purple-50 px-1.5 py-0.2 rounded">Private</span>
-            </div>
-            
-            <div className="mt-1 space-y-1">
-              {dmTeammates.length > 0 ? (
-                dmTeammates.map((member) => {
-                  const dmId = `dm_${member.id}`;
-                  const isActive = activeChannelId === dmId;
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center justify-between">
+                  <span className="font-semibold text-xs text-zinc-900 truncate">#{squadChannel.name}</span>
+                  <span className="text-[10px] font-bold text-[#E61E32] bg-red-100/70 px-1.5 py-0.5 rounded">
+                    Squad
+                  </span>
+                </div>
+                <p className="text-[11px] text-zinc-500 truncate mt-0.5">Private team sync room</p>
+              </div>
+            </button>
+          )}
+
+          {/* 2. PUBLIC CHANNELS */}
+          {(filterType === "all" || filterType === "public") && (
+            <div>
+              <div className="px-4 py-1.5 text-[10px] font-bold uppercase tracking-wider text-zinc-400 bg-zinc-100/50">
+                Public Channels
+              </div>
+              {publicChannels
+                .filter((chan) => matchesSearch(chan.name))
+                .map((chan) => {
+                  const isActive = activeChannelId === chan.id;
                   return (
                     <button
-                      key={member.id}
-                      onClick={() => setActiveChannelId(dmId)}
-                      className={`w-full flex items-center gap-2 px-3 py-2 text-xs font-semibold tracking-tight transition-all cursor-pointer border ${
+                      key={chan.id}
+                      onClick={() => setActiveChannelId(chan.id)}
+                      className={`w-full px-4 py-3 text-left flex items-center gap-3 transition-colors cursor-pointer ${
                         isActive
-                          ? "bg-purple-50 text-purple-800 border-purple-200 shadow-sm"
-                          : "text-zinc-650 bg-white border-transparent hover:bg-zinc-100 hover:text-zinc-900"
+                          ? "bg-emerald-50/80 border-l-4 border-l-emerald-600"
+                          : "hover:bg-zinc-100/70"
                       }`}
                     >
-                      <div className="w-5 h-5 rounded-full bg-purple-100 text-purple-700 flex items-center justify-center text-[10px] font-black shrink-0">
-                        {member.name.charAt(0).toUpperCase()}
+                      <div className="size-10 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center font-bold text-sm shrink-0 border border-emerald-200">
+                        <Hash className="w-4 h-4" />
                       </div>
-                      <div className="truncate flex-1 text-left">
-                        <div className="truncate">{member.name}</div>
-                        <div className="text-[9px] text-zinc-400 font-normal">{member.role}</div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center justify-between">
+                          <span className="font-semibold text-xs text-zinc-900 truncate">#{chan.name}</span>
+                          {channelCounts[chan.id] !== undefined && (
+                            <span className="text-[10px] font-medium text-zinc-400">
+                              {channelCounts[chan.id]} msgs
+                            </span>
+                          )}
+                        </div>
+                        <p className="text-[11px] text-zinc-500 truncate mt-0.5">{chan.description}</p>
                       </div>
-                      <span className="w-2 h-2 rounded-full bg-emerald-500 shrink-0" title="Teammate Online" />
                     </button>
                   );
-                })
-              ) : (
-                <div className="px-3 py-2 text-[11px] text-zinc-400 italic">
-                  No other teammates in squad yet.
-                </div>
-              )}
+                })}
+            </div>
+          )}
 
-              {/* Judges / Mentors DMs */}
-              {contacts.judges.length > 0 && (
-                <div className="pt-2">
-                  <div className="px-2 py-0.5 text-[9px] font-bold text-zinc-400 uppercase">Jury / Mentors</div>
-                  {contacts.judges.map((judge) => {
-                    const dmId = `dm_${judge.id}`;
+          {/* 3. DIRECT MESSAGES - TEAMMATES */}
+          {(filterType === "all" || filterType === "dm") && (
+            <div>
+              <div className="px-4 py-1.5 text-[10px] font-bold uppercase tracking-wider text-zinc-400 bg-zinc-100/50 flex justify-between items-center">
+                <span>Direct Messages</span>
+                <span className="text-purple-600 text-[9px] font-extrabold">1-on-1</span>
+              </div>
+              
+              {dmTeammates.length > 0 ? (
+                dmTeammates
+                  .filter((m) => matchesSearch(m.name))
+                  .map((member) => {
+                    const dmId = `dm_${member.id}`;
                     const isActive = activeChannelId === dmId;
                     return (
                       <button
-                        key={judge.id}
+                        key={member.id}
                         onClick={() => setActiveChannelId(dmId)}
-                        className={`w-full flex items-center gap-2 px-3 py-2 text-xs font-semibold tracking-tight transition-all cursor-pointer border ${
+                        className={`w-full px-4 py-3 text-left flex items-center gap-3 transition-colors cursor-pointer ${
                           isActive
-                            ? "bg-purple-50 text-purple-800 border-purple-200 shadow-sm"
-                            : "text-zinc-650 bg-white border-transparent hover:bg-zinc-100 hover:text-zinc-900"
+                            ? "bg-purple-50/80 border-l-4 border-l-purple-600"
+                            : "hover:bg-zinc-100/70"
                         }`}
                       >
-                        <div className="w-5 h-5 rounded-full bg-amber-100 text-amber-700 flex items-center justify-center shrink-0">
-                          <Gavel className="w-3 h-3" />
-                        </div>
-                        <div className="truncate flex-1 text-left">
-                          <div className="truncate">{judge.name}</div>
-                          <div className="text-[9px] text-zinc-400 font-normal">Judge / Jury</div>
+                        <Avatar className="size-10 shrink-0 border border-zinc-200">
+                          {member.avatarUrl ? (
+                            <AvatarImage src={member.avatarUrl} alt={member.name} />
+                          ) : null}
+                          <AvatarFallback className="bg-purple-100 text-purple-800 text-xs font-bold">
+                            {member.name.charAt(0).toUpperCase()}
+                          </AvatarFallback>
+                        </Avatar>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center justify-between">
+                            <span className="font-semibold text-xs text-zinc-900 truncate">{member.name}</span>
+                            <span className="w-2 h-2 rounded-full bg-emerald-500" title="Online" />
+                          </div>
+                          <p className="text-[11px] text-zinc-500 truncate mt-0.5">{member.role}</p>
                         </div>
                       </button>
                     );
-                  })}
-                </div>
+                  })
+              ) : (
+                <div className="px-4 py-3 text-xs text-zinc-400 italic">No other teammates in squad yet.</div>
+              )}
+
+              {/* Judges & Mentors */}
+              {contacts.judges.length > 0 && (
+                <>
+                  <div className="px-4 py-1 text-[9px] font-bold uppercase tracking-wider text-amber-700 bg-amber-50/60 border-t border-b border-amber-100">
+                    Jury & Mentors
+                  </div>
+                  {contacts.judges
+                    .filter((j) => matchesSearch(j.name))
+                    .map((judge) => {
+                      const dmId = `dm_${judge.id}`;
+                      const isActive = activeChannelId === dmId;
+                      return (
+                        <button
+                          key={judge.id}
+                          onClick={() => setActiveChannelId(dmId)}
+                          className={`w-full px-4 py-3 text-left flex items-center gap-3 transition-colors cursor-pointer ${
+                            isActive
+                              ? "bg-amber-50/80 border-l-4 border-l-amber-600"
+                              : "hover:bg-zinc-100/70"
+                          }`}
+                        >
+                          <Avatar className="size-10 shrink-0 border border-amber-200">
+                            {judge.avatarUrl ? (
+                              <AvatarImage src={judge.avatarUrl} alt={judge.name} />
+                            ) : null}
+                            <AvatarFallback className="bg-amber-100 text-amber-800 text-xs font-bold">
+                              <Gavel className="w-4 h-4" />
+                            </AvatarFallback>
+                          </Avatar>
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center justify-between">
+                              <span className="font-semibold text-xs text-zinc-900 truncate">{judge.name}</span>
+                              <span className="text-[9px] font-bold text-amber-700 bg-amber-100 px-1 py-0.2 rounded">
+                                Judge
+                              </span>
+                            </div>
+                            <p className="text-[11px] text-zinc-500 truncate mt-0.5">Evaluation & Mentorship</p>
+                          </div>
+                        </button>
+                      );
+                    })}
+                </>
               )}
             </div>
-          </div>
+          )}
 
-        </nav>
-        
-        {/* Privacy Scoping Notice */}
-        <div className="p-3 border-t border-zinc-200 bg-zinc-50/80 text-[10px] text-zinc-500 flex items-center gap-2">
-          <Shield className="w-3.5 h-3.5 text-[#E61E32] shrink-0" />
-          <span>RBAC privacy enforced. Messages strictly isolated by channel scope.</span>
         </div>
       </aside>
 
-      {/* ── Main Chat Area ── */}
-      <section className="flex-1 flex flex-col justify-between overflow-hidden bg-white">
+      {/* ── Right Panel: Chat Conversation & Composition ── */}
+      <section className="flex-1 flex flex-col h-full bg-zinc-50/40 relative overflow-hidden">
         
-        {/* Chat Header with Visibility Banner */}
-        <div className="p-4 border-b border-zinc-200 flex flex-col md:flex-row md:items-center justify-between gap-2 shrink-0 bg-zinc-50/40">
-          <div className="flex flex-col gap-0.5">
-            <div className="flex items-center gap-2">
-              {currentChannel.scope === "squad" ? (
-                <Lock className="w-4 h-4 text-[#E61E32]" />
-              ) : currentChannel.scope === "dm" ? (
-                <User className="w-4 h-4 text-purple-600" />
-              ) : (
-                <Globe className="w-4 h-4 text-emerald-600" />
-              )}
-              <h4 className="text-sm font-bold text-zinc-900 tracking-tight">
-                {currentChannel.scope === "dm" ? currentChannel.name : `#${currentChannel.name}`}
-              </h4>
+        {/* Chat Room Top Bar */}
+        <div className="h-14 px-4 md:px-6 border-b border-zinc-200 flex items-center justify-between bg-white shrink-0">
+          <div className="flex items-center gap-3 min-w-0">
+            <Avatar className="size-9 shrink-0 border border-zinc-200">
+              {currentChannel.avatarUrl ? (
+                <AvatarImage src={currentChannel.avatarUrl} />
+              ) : null}
+              <AvatarFallback className={`text-xs font-bold ${
+                currentChannel.scope === "squad"
+                  ? "bg-red-100 text-[#E61E32]"
+                  : currentChannel.scope === "dm"
+                  ? "bg-purple-100 text-purple-800"
+                  : "bg-emerald-100 text-emerald-800"
+              }`}>
+                {currentChannel.scope === "squad" ? (
+                  <Lock className="w-4 h-4" />
+                ) : currentChannel.scope === "dm" ? (
+                  currentChannel.name.charAt(0).toUpperCase()
+                ) : (
+                  <Hash className="w-4 h-4" />
+                )}
+              </AvatarFallback>
+            </Avatar>
 
-              {/* Scope Badge */}
-              {currentChannel.scope === "squad" ? (
-                <span className="text-[10px] font-extrabold bg-red-100 text-[#E61E32] px-2 py-0.5 rounded-full border border-red-200 flex items-center gap-1">
-                  <Lock className="w-2.5 h-2.5" />
-                  SQUAD PRIVATE
-                </span>
-              ) : currentChannel.scope === "dm" ? (
-                <span className="text-[10px] font-extrabold bg-purple-100 text-purple-800 px-2 py-0.5 rounded-full border border-purple-200 flex items-center gap-1">
-                  <Shield className="w-2.5 h-2.5" />
-                  1-ON-1 DIRECT MESSAGE
-                </span>
-              ) : (
-                <span className="text-[10px] font-extrabold bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded-full border border-emerald-200 flex items-center gap-1">
-                  <Globe className="w-2.5 h-2.5" />
-                  PUBLIC TO ALL TEAMS
-                </span>
-              )}
+            <div className="min-w-0">
+              <div className="flex items-center gap-2">
+                <h3 className="text-sm font-bold text-zinc-950 truncate">
+                  {currentChannel.scope === "dm" ? currentChannel.name : `#${currentChannel.name}`}
+                </h3>
+                {currentChannel.scope === "squad" ? (
+                  <span className="text-[9px] font-black bg-red-100 text-[#E61E32] px-2 py-0.5 rounded-full border border-red-200">
+                    SQUAD PRIVATE
+                  </span>
+                ) : currentChannel.scope === "dm" ? (
+                  <span className="text-[9px] font-black bg-purple-100 text-purple-800 px-2 py-0.5 rounded-full border border-purple-200">
+                    1-ON-1 DM
+                  </span>
+                ) : (
+                  <span className="text-[9px] font-black bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded-full border border-emerald-200">
+                    PUBLIC CHANNEL
+                  </span>
+                )}
+              </div>
+              <p className="text-[11px] text-zinc-500 truncate hidden sm:block">
+                {currentChannel.description}
+              </p>
             </div>
-            <p className="text-[11px] text-zinc-500 font-normal">
-              {currentChannel.description}
-            </p>
           </div>
 
-          <div className="text-[10px] text-zinc-400 font-bold uppercase tracking-wider flex items-center gap-1.5 self-start md:self-auto">
-            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-            Live Sync Active
+          <div className="flex items-center gap-1.5 shrink-0">
+            <Button variant="ghost" size="icon" className="h-8 w-8 text-zinc-500 hover:text-zinc-950">
+              <Video className="w-4 h-4" />
+            </Button>
+            <Button variant="ghost" size="icon" className="h-8 w-8 text-zinc-500 hover:text-zinc-950">
+              <Phone className="w-4 h-4" />
+            </Button>
+            <Button variant="ghost" size="icon" className="h-8 w-8 text-zinc-500 hover:text-zinc-950">
+              <Search className="w-4 h-4" />
+            </Button>
           </div>
         </div>
 
-        {/* Message Logs Pane */}
-        <div className="flex-1 p-4 md:p-6 overflow-y-auto space-y-4 bg-zinc-50/20">
+        {/* Messages Feed */}
+        <div
+          ref={scrollContainerRef}
+          className="flex-1 p-4 md:p-6 overflow-y-auto space-y-3.5 bg-zinc-50/50"
+        >
           {isLoading ? (
             <div className="h-full flex flex-col items-center justify-center">
               <Loader2 className="w-6 h-6 text-[#E61E32] animate-spin" />
-              <span className="text-xs text-zinc-400 font-bold mt-2">Loading scoped messages...</span>
+              <span className="text-xs text-zinc-400 font-medium mt-2">Loading messages...</span>
             </div>
           ) : messages.length > 0 ? (
             messages.map((msg) => {
@@ -498,8 +634,8 @@ export default function TeamMessagesPage() {
 
               if (isSystem) {
                 return (
-                  <div key={msg.id} className="flex justify-center w-full my-2 animate-in fade-in duration-200">
-                    <span className="bg-zinc-100 border border-zinc-200 text-zinc-600 text-[10px] font-semibold px-3 py-1 rounded-full tracking-wide flex items-center gap-1.5">
+                  <div key={msg.id} className="flex justify-center w-full my-2">
+                    <span className="bg-white border border-zinc-200 text-zinc-600 text-[10px] font-medium px-3 py-1 rounded-full shadow-2xs flex items-center gap-1.5">
                       <Info className="w-3 h-3 text-[#E61E32]" />
                       {renderSystemMessage(msg.content)}
                     </span>
@@ -511,22 +647,22 @@ export default function TeamMessagesPage() {
 
               if (isMe) {
                 return (
-                  <div key={msg.id} className="flex justify-end w-full pl-12 animate-in fade-in duration-200">
-                    <div className={`${bubbleTheme.bg} border ${bubbleTheme.border} rounded-2xl rounded-tr-none px-4 py-2.5 max-w-[80%] md:max-w-[70%] shadow-sm relative`}>
-                      <div className="flex items-center justify-between gap-3 mb-1.5 border-b border-zinc-200/50 pb-1">
-                        <span className={`text-[10px] font-black uppercase tracking-wider ${bubbleTheme.senderText}`}>
+                  <div key={msg.id} className="flex justify-end w-full pl-12">
+                    <div className="bg-[#E61E32] text-white rounded-2xl rounded-tr-none px-4 py-2.5 max-w-[80%] md:max-w-[70%] shadow-sm">
+                      <div className="flex items-center justify-between gap-3 mb-1 border-b border-white/20 pb-0.5">
+                        <span className="text-[10px] font-bold text-white/90">
                           {msg.senderName} (You)
                         </span>
-                        <span className="text-[9px] bg-red-100 text-[#E61E32] px-1.5 py-0.2 rounded font-bold uppercase tracking-wider">
+                        <span className="text-[9px] bg-white/20 text-white px-1.5 py-0.2 rounded font-bold uppercase">
                           {msg.senderRole}
                         </span>
                       </div>
-                      <p className="text-xs text-zinc-800 leading-relaxed font-semibold break-words">
+                      <p className="text-xs text-white leading-relaxed font-medium break-words">
                         {msg.content}
                       </p>
-                      <div className="flex items-center justify-end gap-1 mt-1.5">
-                        <span className="text-[9px] text-zinc-400 font-bold">
-                          {msg.createdAt.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                      <div className="flex items-center justify-end mt-1">
+                        <span className="text-[9px] text-white/75 font-normal">
+                          {msg.createdAt.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
                         </span>
                       </div>
                     </div>
@@ -535,36 +671,31 @@ export default function TeamMessagesPage() {
               }
 
               return (
-                <div key={msg.id} className="flex justify-start w-full pr-12 gap-3 items-start animate-in fade-in duration-200">
-                  <div className="w-8 h-8 rounded-full overflow-hidden border border-zinc-300 shrink-0 select-none flex items-center justify-center bg-zinc-200">
+                <div key={msg.id} className="flex justify-start w-full pr-12 gap-2.5 items-start">
+                  <Avatar className="size-8 shrink-0 border border-zinc-200">
                     {msg.senderAvatar && (msg.senderAvatar.startsWith("http") || msg.senderAvatar.startsWith("/")) ? (
-                      <img
-                        src={msg.senderAvatar}
-                        alt={msg.senderName}
-                        className="w-full h-full object-cover"
-                      />
-                    ) : (
-                      <span className="font-bold text-xs text-zinc-700">
-                        {msg.senderAvatar || msg.senderName.split(" ").map(n => n[0]).join("").toUpperCase()}
-                      </span>
-                    )}
-                  </div>
-                  
-                  <div className={`${bubbleTheme.bg} border ${bubbleTheme.border} rounded-2xl rounded-tl-none px-4 py-2.5 max-w-[80%] md:max-w-[70%] shadow-sm relative`}>
-                    <div className="flex items-center justify-between gap-3 mb-1.5 border-b border-zinc-200/50 pb-1">
-                      <span className={`text-[10px] font-black uppercase tracking-wider ${bubbleTheme.senderText}`}>
+                      <AvatarImage src={msg.senderAvatar} alt={msg.senderName} />
+                    ) : null}
+                    <AvatarFallback className="bg-zinc-200 text-zinc-700 text-xs font-bold">
+                      {msg.senderName.slice(0, 2).toUpperCase()}
+                    </AvatarFallback>
+                  </Avatar>
+
+                  <div className="bg-white border border-zinc-200 rounded-2xl rounded-tl-none px-4 py-2.5 max-w-[80%] md:max-w-[70%] shadow-xs">
+                    <div className="flex items-center justify-between gap-3 mb-1 border-b border-zinc-100 pb-0.5">
+                      <span className="text-[10px] font-bold text-zinc-900">
                         {msg.senderName}
                       </span>
-                      <span className="text-[9px] bg-zinc-200/70 text-zinc-700 px-1.5 py-0.2 rounded font-bold uppercase tracking-wider">
+                      <span className="text-[9px] bg-zinc-100 text-zinc-600 px-1.5 py-0.2 rounded font-medium uppercase">
                         {msg.senderRole}
                       </span>
                     </div>
                     <p className="text-xs text-zinc-800 leading-relaxed font-medium break-words">
                       {msg.content}
                     </p>
-                    <div className="flex items-center justify-start gap-1 mt-1.5">
-                      <span className="text-[9px] text-zinc-400 font-bold">
-                        {msg.createdAt.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                    <div className="flex items-center justify-start mt-1">
+                      <span className="text-[9px] text-zinc-400 font-normal">
+                        {msg.createdAt.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
                       </span>
                     </div>
                   </div>
@@ -573,56 +704,86 @@ export default function TeamMessagesPage() {
             })
           ) : (
             <div className="h-full flex flex-col items-center justify-center text-center p-6">
-              <div className="w-16 h-16 rounded-full bg-zinc-100 border border-zinc-200 flex items-center justify-center text-zinc-400 mb-3">
+              <div className="w-14 h-14 rounded-full bg-zinc-100 border border-zinc-200 flex items-center justify-center text-zinc-400 mb-3">
                 {currentChannel.scope === "squad" ? (
-                  <Lock className="w-8 h-8 text-[#E61E32]" />
+                  <Lock className="w-7 h-7 text-[#E61E32]" />
                 ) : currentChannel.scope === "dm" ? (
-                  <User className="w-8 h-8 text-purple-600" />
+                  <User className="w-7 h-7 text-purple-600" />
                 ) : (
-                  <Globe className="w-8 h-8 text-emerald-600" />
+                  <Globe className="w-7 h-7 text-emerald-600" />
                 )}
               </div>
-              <h5 className="text-sm font-bold text-zinc-800">
+              <h4 className="text-sm font-semibold text-zinc-900">
                 {currentChannel.scope === "squad"
                   ? "Squad Private Channel is Ready"
                   : currentChannel.scope === "dm"
                   ? `Direct message with ${currentChannel.name}`
                   : `Welcome to #${currentChannel.name}`}
-              </h5>
+              </h4>
               <p className="text-xs text-zinc-500 font-normal mt-1 max-w-sm">
                 {currentChannel.scope === "squad"
-                  ? "Messages sent here are completely private to members of your squad only."
+                  ? "Messages sent here are completely private to your team members."
                   : currentChannel.scope === "dm"
-                  ? "Messages sent here can only be seen by you and this person."
-                  : "Messages sent here are broadcasted to all registered participants in this hackathon."}
+                  ? "Messages sent here are strictly confidential between you two."
+                  : "Messages sent here are broadcast to all participants."}
               </p>
             </div>
           )}
-          <div ref={messagesEndRef} />
         </div>
 
-        {/* Message Composition Input */}
-        <form onSubmit={handleSendMessage} className="p-4 border-t border-zinc-200 bg-white flex gap-3 items-center shrink-0">
-          <div className="flex-1 relative">
-            <input
-              type="text"
-              value={inputText}
-              onChange={(e) => setInputText(e.target.value)}
-              placeholder={
-                currentChannel.scope === "squad"
-                  ? "Message your squad (Private)..."
-                  : currentChannel.scope === "dm"
-                  ? `Direct message ${currentChannel.name} (Private)...`
-                  : `Post to #${currentChannel.name} (Public to all)...`
-              }
-              className="w-full bg-zinc-50 hover:bg-zinc-100/60 border border-zinc-200 focus:bg-white focus:outline-none focus:border-[#E61E32] text-xs px-4 py-3 rounded-none font-medium transition-all shadow-inner"
-            />
-          </div>
-          <button
+        {/* Message Input Box */}
+        <form onSubmit={handleSendMessage} className="p-3 md:p-4 border-t border-zinc-200 bg-white flex items-center gap-2 shrink-0">
+          
+          <Button type="button" variant="ghost" size="icon" className="h-9 w-9 text-zinc-500 hover:text-zinc-900 shrink-0">
+            <Smile className="w-5 h-5" />
+          </Button>
+
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button type="button" variant="ghost" size="icon" className="h-9 w-9 text-zinc-500 hover:text-zinc-900 shrink-0">
+                <Paperclip className="w-4 h-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="start" className="w-48">
+              <DropdownMenuItem className="text-xs cursor-pointer">
+                <Image className="w-4 h-4 mr-2" /> Photos & Videos
+              </DropdownMenuItem>
+              <DropdownMenuItem className="text-xs cursor-pointer">
+                <Camera className="w-4 h-4 mr-2" /> Camera
+              </DropdownMenuItem>
+              <DropdownMenuItem className="text-xs cursor-pointer">
+                <File className="w-4 h-4 mr-2" /> Document
+              </DropdownMenuItem>
+              <DropdownMenuItem className="text-xs cursor-pointer">
+                <UserRound className="w-4 h-4 mr-2" /> Contact
+              </DropdownMenuItem>
+              <DropdownMenuItem className="text-xs cursor-pointer">
+                <ChartBarIncreasing className="w-4 h-4 mr-2" /> Poll
+              </DropdownMenuItem>
+              <DropdownMenuItem className="text-xs cursor-pointer">
+                <Brush className="w-4 h-4 mr-2" /> Drawing
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+
+          <Input
+            type="text"
+            value={inputText}
+            onChange={(e) => setInputText(e.target.value)}
+            placeholder={
+              currentChannel.scope === "squad"
+                ? "Message your squad (Private)..."
+                : currentChannel.scope === "dm"
+                ? `Direct message ${currentChannel.name}...`
+                : `Post to #${currentChannel.name}...`
+            }
+            className="flex-1 h-10 text-xs bg-zinc-50 border-zinc-200 focus-visible:bg-white rounded-lg shadow-2xs"
+          />
+
+          <Button
             type="submit"
             disabled={isSending || !inputText.trim()}
-            className="bg-[#E61E32] hover:bg-[#c91527] disabled:opacity-50 border border-[#c91527] text-white px-5 py-3 rounded-none flex items-center justify-center gap-2 shadow-sm transition-all cursor-pointer font-bold text-xs"
-            title="Send Message"
+            className="h-10 px-4 bg-[#E61E32] hover:bg-[#c91527] text-white text-xs font-semibold rounded-lg shrink-0 gap-1.5 shadow-sm"
           >
             {isSending ? (
               <Loader2 className="w-4 h-4 animate-spin" />
@@ -632,12 +793,11 @@ export default function TeamMessagesPage() {
                 <Send className="w-3.5 h-3.5" />
               </>
             )}
-          </button>
+          </Button>
         </form>
 
       </section>
-      
+
     </div>
   );
 }
-
