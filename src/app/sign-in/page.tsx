@@ -1,18 +1,22 @@
 "use client";
 
-import { useState, useActionState, startTransition } from "react";
+import { useState, useActionState, startTransition, Suspense } from "react";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import { signInAction } from "../actions/auth-actions";
 import { GrainGradient } from "@paper-design/shaders-react";
 import { FieldBox, SocialButton, GoogleIcon } from "@/components/ui/auth-section-1";
 import { Loader2, ArrowLeft } from "lucide-react";
 
-export default function SignInPage() {
+function SignInContent() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [organizerKey, setOrganizerKey] = useState("");
   const [emailError, setEmailError] = useState("");
   const [passwordError, setPasswordError] = useState("");
+
+  const searchParams = useSearchParams();
+  const urlError = searchParams.get("error");
   
   const [state, formAction, isPending] = useActionState(signInAction, null);
 
@@ -106,9 +110,9 @@ export default function SignInPage() {
             </div>
 
             {/* Error banner */}
-            {state?.error && (
+            {(state?.error || urlError) && (
               <div className="bg-red-50 text-red-700 text-xs p-3.5 border border-red-200 mb-4 font-medium rounded-xl">
-                {state.error}
+                {state?.error || urlError}
               </div>
             )}
 
@@ -202,6 +206,14 @@ export default function SignInPage() {
 
       </div>
     </section>
+  );
+}
+
+export default function SignInPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen flex items-center justify-center text-zinc-500 font-medium">Loading...</div>}>
+      <SignInContent />
+    </Suspense>
   );
 }
 

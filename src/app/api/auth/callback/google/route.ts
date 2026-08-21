@@ -159,10 +159,11 @@ export async function GET(request: NextRequest) {
     // ── Set session cookie (same system used for credentials auth) ──────────────
     await setSessionCookie(organizer.id);
     return NextResponse.redirect(`${appUrl}/organizer/dashboard`);
-  } catch (err) {
+  } catch (err: any) {
     console.error("[Google OAuth] DB upsert error:", err);
+    const detail = err?.message ? `: ${err.message}` : "";
     return NextResponse.redirect(
-      `${appUrl}/sign-in?error=${encodeURIComponent("Account setup failed. Please try again.")}`
+      `${appUrl}/sign-in?error=${encodeURIComponent(`Account setup failed${detail}`)}`
     );
   }
 }

@@ -93,9 +93,9 @@ function LoginFormContent() {
             </div>
 
             {/* Error banner */}
-            {state?.error && (
+            {(state?.error || searchParams.get("error")) && (
               <div className="bg-red-50 text-red-700 text-xs p-3.5 border border-red-200 mb-4 font-medium rounded-xl">
-                {state.error}
+                {state?.error || searchParams.get("error")}
               </div>
             )}
 

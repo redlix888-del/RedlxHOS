@@ -164,10 +164,11 @@ export async function GET(request: NextRequest) {
     );
 
     return NextResponse.redirect(joinUrl.toString());
-  } catch (err) {
-    console.error("[Team Google OAuth] DB error:", err);
+  } catch (err: any) {
+    console.error("[Team Google OAuth] Error:", err);
+    const detail = err?.message ? `: ${err.message}` : "";
     return NextResponse.redirect(
-      `${appUrl}/team/login?error=${encodeURIComponent("Account lookup failed. Please try again.")}`
+      `${appUrl}/team/login?error=${encodeURIComponent(`Google authentication failed${detail}`)}`
     );
   }
 }
