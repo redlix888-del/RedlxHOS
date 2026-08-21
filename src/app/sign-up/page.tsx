@@ -115,6 +115,19 @@ export default function SignUpPage() {
               </p>
             </div>
 
+            {/* Social Buttons — only shown on step 1 */}
+            {step === 1 && (
+              <>
+                <div className="mt-5 grid gap-3 sm:grid-cols-2">
+                  <SocialButton icon={<GoogleIcon />} label="Continue with Google" href="/api/auth/google" />
+                  <SocialButton icon={<AppleIcon />} label="Continue with Apple" />
+                </div>
+                <div className="my-5 text-center text-xs font-medium uppercase tracking-wider text-zinc-400">
+                  or sign up with email
+                </div>
+              </>
+            )}
+
             {/* Error banner */}
             {state?.error && (
               <div className="bg-red-50 text-red-700 text-xs p-3.5 border border-red-200 my-3 font-medium rounded-xl">

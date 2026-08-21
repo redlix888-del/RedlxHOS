@@ -137,12 +137,29 @@ export default function AuthSectionOne() {
   );
 }
 
-export function SocialButton({ icon, label }: { icon: ReactNode; label: string }) {
+export function SocialButton({
+  icon,
+  label,
+  href,
+}: {
+  icon: ReactNode;
+  label: string;
+  href?: string;
+}) {
+  const className =
+    "flex h-11 items-center justify-center gap-2 rounded-xl border border-zinc-200 bg-zinc-50/80 px-3 text-xs sm:text-sm font-semibold text-zinc-800 transition-all hover:bg-zinc-100 hover:border-zinc-300 shadow-2xs cursor-pointer";
+
+  if (href) {
+    return (
+      <a href={href} className={className}>
+        <span className="shrink-0">{icon}</span>
+        <span className="whitespace-nowrap">{label}</span>
+      </a>
+    );
+  }
+
   return (
-    <button
-      type="button"
-      className="flex h-11 items-center justify-center gap-2 rounded-xl border border-zinc-200 bg-zinc-50/80 px-3 text-xs sm:text-sm font-semibold text-zinc-800 transition-all hover:bg-zinc-100 hover:border-zinc-300 shadow-2xs cursor-pointer"
-    >
+    <button type="button" className={className}>
       <span className="shrink-0">{icon}</span>
       <span className="whitespace-nowrap">{label}</span>
     </button>

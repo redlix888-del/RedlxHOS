@@ -77,7 +77,7 @@ export default function SignInPage() {
 
             {/* Social Buttons */}
             <div className="mt-6 grid gap-3 sm:grid-cols-2">
-              <SocialButton icon={<GoogleIcon />} label="Continue with Google" />
+              <SocialButton icon={<GoogleIcon />} label="Continue with Google" href="/api/auth/google" />
               <SocialButton icon={<AppleIcon />} label="Continue with Apple" />
             </div>
 

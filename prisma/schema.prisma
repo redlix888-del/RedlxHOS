@@ -5,7 +5,7 @@ generator client {
 }
 
 datasource db {
-  provider  = "postgresql"
+  provider = "postgresql"
 }
 
 model Organizer {
@@ -16,32 +16,35 @@ model Organizer {
   phone            String?
   organizationName String
   website          String?
-  passwordHash     String
+  passwordHash     String? // null for OAuth-only accounts
+  googleId         String?     @unique
+  authProvider     String      @default("credentials") // "credentials" | "google"
+  avatarUrl        String?
   hackathons       Hackathon[]
   createdAt        DateTime    @default(now())
   updatedAt        DateTime    @updatedAt
 }
 
 model Hackathon {
-  id            String         @id @default(uuid())
-  title         String
-  description   String
-  startDate     DateTime
-  endDate       DateTime
-  status        String         @default("Draft") // "Draft", "Active", "Completed"
-  tag           String         @default("Regional") // "International", "Specialized", "Regional"
-  location      String         @default("Online")
-  prizePool     String         @default("$0")
-  bannerUrl     String?
-  ticketingLink String?
-  locationLink  String?
-  prizes        Prize[]
-  faqs          FAQ[]
-  scheduleItems ScheduleItem[]
-  ticketTiers   TicketTier[]
-  qrCodeUrl     String?
-  organizerId   String
-  organizer     Organizer      @relation(fields: [organizerId], references: [id], onDelete: Cascade)
+  id                 String              @id @default(uuid())
+  title              String
+  description        String
+  startDate          DateTime
+  endDate            DateTime
+  status             String              @default("Draft") // "Draft", "Active", "Completed"
+  tag                String              @default("Regional") // "International", "Specialized", "Regional"
+  location           String              @default("Online")
+  prizePool          String              @default("$0")
+  bannerUrl          String?
+  ticketingLink      String?
+  locationLink       String?
+  prizes             Prize[]
+  faqs               FAQ[]
+  scheduleItems      ScheduleItem[]
+  ticketTiers        TicketTier[]
+  qrCodeUrl          String?
+  organizerId        String
+  organizer          Organizer           @relation(fields: [organizerId], references: [id], onDelete: Cascade)
   registrations      Registration[]
   teams              Team[]
   announcements      Announcement[]
@@ -49,9 +52,9 @@ model Hackathon {
   judgingGuidelines  JudgingGuideline[]
   projectSubmissions ProjectSubmission[]
   messages           Message[]
-  publishLeaderboard Boolean        @default(false)
-  createdAt          DateTime       @default(now())
-  updatedAt          DateTime       @updatedAt
+  publishLeaderboard Boolean             @default(false)
+  createdAt          DateTime            @default(now())
+  updatedAt          DateTime            @updatedAt
 }
 
 model Prize {
@@ -121,26 +124,26 @@ model TicketTier {
 }
 
 model Team {
-  id                String       @id @default(uuid())
+  id                String             @id @default(uuid())
   teamName          String
   teamLeadName      String
-  email             String       @unique
+  email             String             @unique
   passwordHash      String
-  joinCode          String       @unique
-  score             Int          @default(0)
+  joinCode          String             @unique
+  score             Int                @default(0)
   avatarUrl         String?
   hackathonId       String
-  hackathon         Hackathon    @relation(fields: [hackathonId], references: [id], onDelete: Cascade)
+  hackathon         Hackathon          @relation(fields: [hackathonId], references: [id], onDelete: Cascade)
   members           TeamMember[]
   tasks             Task[]
   taskLogs          TaskLog[]
   projectSubmission ProjectSubmission?
-  messages           Message[]
-  juryRequests       JuryRequest[]
-  idea               Idea?
-  roasts             ProjectRoast[]
-  createdAt         DateTime     @default(now())
-  updatedAt         DateTime     @updatedAt
+  messages          Message[]
+  juryRequests      JuryRequest[]
+  idea              Idea?
+  roasts            ProjectRoast[]
+  createdAt         DateTime           @default(now())
+  updatedAt         DateTime           @updatedAt
 }
 
 model TeamMember {
@@ -156,10 +159,10 @@ model TeamMember {
 }
 
 model Task {
-  id              String    @id @default(uuid())
+  id              String   @id @default(uuid())
   title           String
   description     String
-  status          String    @default("TO_DO") // TO_DO | IN_PROGRESS | COMPLETED
+  status          String   @default("TO_DO") // TO_DO | IN_PROGRESS | COMPLETED
   assigneeId      String
   assigneeName    String
   assigneeRole    String
@@ -168,9 +171,9 @@ model Task {
   completedByRole String?
   completedAt     String?
   teamId          String
-  team            Team      @relation(fields: [teamId], references: [id], onDelete: Cascade)
-  createdAt       DateTime  @default(now())
-  updatedAt       DateTime  @updatedAt
+  team            Team     @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
 }
 
 model TaskLog {
@@ -192,17 +195,17 @@ model Announcement {
 }
 
 model Judge {
-  id                 String    @id @default(uuid())
+  id                 String        @id @default(uuid())
   name               String
   description        String
   imageUrl           String?
   loginCode          String?
   loginCodeExpiresAt DateTime?
   hackathonId        String
-  hackathon          Hackathon @relation(fields: [hackathonId], references: [id], onDelete: Cascade)
+  hackathon          Hackathon     @relation(fields: [hackathonId], references: [id], onDelete: Cascade)
   juryRequests       JuryRequest[]
-  createdAt          DateTime  @default(now())
-  updatedAt          DateTime  @updatedAt
+  createdAt          DateTime      @default(now())
+  updatedAt          DateTime      @updatedAt
 }
 
 model JudgingGuideline {
@@ -214,17 +217,17 @@ model JudgingGuideline {
 }
 
 model ProjectSubmission {
-  id            String    @id @default(uuid())
-  teamId        String    @unique
-  team          Team      @relation(fields: [teamId], references: [id], onDelete: Cascade)
-  hackathonId   String
-  hackathon     Hackathon @relation(fields: [hackathonId], references: [id], onDelete: Cascade)
-  githubUrl     String
-  liveUrl       String?
-  projectName   String?
-  description   String?
-  submittedAt   DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
+  id          String    @id @default(uuid())
+  teamId      String    @unique
+  team        Team      @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  hackathonId String
+  hackathon   Hackathon @relation(fields: [hackathonId], references: [id], onDelete: Cascade)
+  githubUrl   String
+  liveUrl     String?
+  projectName String?
+  description String?
+  submittedAt DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
 }
 
 model Message {
@@ -310,4 +313,509 @@ model PlatformIncident {
   resolvedAt DateTime?
   createdAt  DateTime  @default(now())
   updatedAt  DateTime  @updatedAt
+}
+
+// ==============================================================================
+// V2 ARCHITECTURE (Phase 2)
+// ==============================================================================
+
+// --- IDENTITY ---
+
+model User {
+  id           String   @id @default(uuid())
+  email        String   @unique
+  passwordHash String?
+  fullName     String
+  status       String   @default("ACTIVE") // ACTIVE, BANNED, INACTIVE
+  avatarUrl    String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  userRoles           UserRole[]
+  organizationMembers OrganizationMember[]
+  eventMembers        EventMember[]
+  registrations       EventRegistration[]
+  teamsAsLeader       EventTeam[]          @relation("TeamCreator")
+  teamMemberships     EventTeamMember[]
+  submissions         Submission[]
+  judgingAssignments  EventJudge[]
+  attendanceRecords   Attendance[]
+  files               File[]
+  auditLogs           AuditLog[]
+
+  @@map("users")
+}
+
+model Role {
+  id          String   @id @default(uuid())
+  name        String   @unique
+  description String?
+  scope       String // GLOBAL, ORGANIZATION, EVENT
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  rolePermissions     RolePermission[]
+  userRoles           UserRole[]
+  organizationMembers OrganizationMember[]
+  eventMembers        EventMember[]
+
+  @@map("roles")
+}
+
+model Permission {
+  id          String   @id @default(uuid())
+  action      String   @unique // e.g., event.create, project.review
+  description String?
+  createdAt   DateTime @default(now())
+
+  rolePermissions RolePermission[]
+
+  @@map("permissions")
+}
+
+model RolePermission {
+  id           String   @id @default(uuid())
+  roleId       String
+  permissionId String
+  createdAt    DateTime @default(now())
+
+  role       Role       @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  permission Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+
+  @@unique([roleId, permissionId])
+  @@map("role_permissions")
+}
+
+model UserRole {
+  id        String   @id @default(uuid())
+  userId    String
+  roleId    String
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role Role @relation(fields: [roleId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, roleId])
+  @@map("user_roles")
+}
+
+// --- ORGANIZATION ---
+
+model Organization {
+  id          String   @id @default(uuid())
+  name        String
+  slug        String   @unique
+  description String?
+  status      String   @default("ACTIVE") // ACTIVE, INACTIVE
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  members OrganizationMember[]
+  events  Event[]
+
+  @@map("organizations")
+}
+
+model OrganizationMember {
+  id             String   @id @default(uuid())
+  organizationId String
+  userId         String
+  roleId         String
+  status         String   @default("ACTIVE") // ACTIVE, INACTIVE
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role         Role         @relation(fields: [roleId], references: [id], onDelete: Cascade)
+
+  @@unique([organizationId, userId])
+  @@map("organization_members")
+}
+
+// --- EVENT ---
+
+model Event {
+  id                  String    @id @default(uuid())
+  organizationId      String
+  name                String
+  slug                String
+  description         String?
+  eventType           String    @default("HACKATHON")
+  status              String    @default("DRAFT") // DRAFT, PUBLISHED, REGISTRATION_OPEN, REGISTRATION_CLOSED, LIVE, JUDGING, COMPLETED, ARCHIVED, CANCELLED
+  startAt             DateTime?
+  endAt               DateTime?
+  registrationStartAt DateTime?
+  registrationEndAt   DateTime?
+  capacity            Int?
+  timezone            String    @default("UTC")
+  venue               String?
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
+
+  organization       Organization         @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  members            EventMember[]
+  registrations      EventRegistration[]
+  teams              EventTeam[]
+  projects           Project[]
+  evaluationRounds   EvaluationRound[]
+  judges             EventJudge[]
+  judgeAssignments   JudgeAssignment[]
+  evaluations        Evaluation[]
+  evaluationCriteria EvaluationCriteria[]
+  attendanceEvents   AttendanceEvent[]
+  attendanceRecords  Attendance[]
+  files              File[]
+  announcements      EventAnnouncement[]
+
+  @@unique([organizationId, slug])
+  @@map("events")
+}
+
+model EventMember {
+  id        String   @id @default(uuid())
+  eventId   String
+  userId    String
+  roleId    String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  event Event @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role  Role  @relation(fields: [roleId], references: [id], onDelete: Cascade)
+
+  @@unique([eventId, userId, roleId])
+  @@map("event_members")
+}
+
+model EventRegistration {
+  id        String   @id @default(uuid())
+  eventId   String
+  userId    String
+  status    String   @default("REGISTERED") // REGISTERED, CONFIRMED, WAITLISTED, CANCELLED, CHECKED_IN, CHECKED_OUT
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  event Event @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([eventId, userId])
+  @@map("registrations")
+}
+
+// --- TEAM ---
+
+model EventTeam {
+  id        String   @id @default(uuid())
+  eventId   String
+  name      String
+  slug      String
+  createdBy String
+  status    String   @default("FORMING") // FORMING, LOCKED, DISQUALIFIED
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  event   Event             @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  creator User              @relation("TeamCreator", fields: [createdBy], references: [id], onDelete: Cascade)
+  members EventTeamMember[]
+  project Project?
+
+  @@unique([eventId, slug])
+  @@map("teams")
+}
+
+model EventTeamMember {
+  id       String   @id @default(uuid())
+  teamId   String
+  userId   String
+  role     String   @default("MEMBER") // LEADER, MEMBER
+  joinedAt DateTime @default(now())
+  status   String   @default("ACTIVE") // ACTIVE, INACTIVE
+
+  team EventTeam @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  user User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([teamId, userId])
+  @@map("team_members")
+}
+
+model TeamInvitation {
+  id        String   @id @default(uuid())
+  teamId    String
+  email     String
+  token     String   @unique
+  status    String   @default("PENDING") // PENDING, ACCEPTED, DECLINED, EXPIRED
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("team_invitations")
+}
+
+// --- PROJECT & SUBMISSION ---
+
+model Project {
+  id          String   @id @default(uuid())
+  eventId     String
+  teamId      String   @unique
+  name        String
+  description String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  event            Event             @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  team             EventTeam         @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  versions         ProjectVersion[]
+  submissions      Submission[]
+  judgeAssignments JudgeAssignment[]
+  evaluations      Evaluation[]
+
+  @@map("projects")
+}
+
+model ProjectVersion {
+  id        String   @id @default(uuid())
+  projectId String
+  version   Int
+  metadata  String? // JSON represented as String or use unsupported("jsonb") if native type mapping is used
+  createdAt DateTime @default(now())
+
+  project     Project      @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  submissions Submission[]
+
+  @@map("project_versions")
+}
+
+model Submission {
+  id             String   @id @default(uuid())
+  projectId      String
+  versionId      String
+  submittedBy    String
+  status         String   @default("SUBMITTED") // DRAFT, SUBMITTED, UNDER_REVIEW, ACCEPTED, REJECTED, WITHDRAWN
+  submissionHash String
+  submittedAt    DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  project Project        @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  version ProjectVersion @relation(fields: [versionId], references: [id], onDelete: Cascade)
+  user    User           @relation(fields: [submittedBy], references: [id], onDelete: Cascade)
+
+  @@map("submissions")
+}
+
+// --- JUDGING ---
+
+model EvaluationRound {
+  id        String   @id @default(uuid())
+  eventId   String
+  name      String
+  sequence  Int
+  status    String   @default("PENDING") // PENDING, ACTIVE, COMPLETED
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  event            Event             @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  judgeAssignments JudgeAssignment[]
+
+  @@unique([eventId, sequence])
+  @@map("evaluation_rounds")
+}
+
+model EventJudge {
+  id        String   @id @default(uuid())
+  eventId   String
+  userId    String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  event            Event             @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  user             User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  judgeAssignments JudgeAssignment[]
+  evaluations      Evaluation[]
+
+  @@unique([eventId, userId])
+  @@map("judges")
+}
+
+model JudgeAssignment {
+  id        String   @id @default(uuid())
+  eventId   String
+  roundId   String
+  judgeId   String
+  projectId String
+  status    String   @default("PENDING") // PENDING, COMPLETED
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  event       Event           @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  round       EvaluationRound @relation(fields: [roundId], references: [id], onDelete: Cascade)
+  judge       EventJudge      @relation(fields: [judgeId], references: [id], onDelete: Cascade)
+  project     Project         @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  evaluations Evaluation[]
+
+  @@unique([roundId, judgeId, projectId])
+  @@map("judge_assignments")
+}
+
+model EvaluationCriteria {
+  id          String   @id @default(uuid())
+  eventId     String
+  name        String
+  description String?
+  maxScore    Decimal
+  weight      Decimal  @default(1.0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  event  Event             @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  scores EvaluationScore[]
+
+  @@map("evaluation_criteria")
+}
+
+model Evaluation {
+  id           String   @id @default(uuid())
+  eventId      String
+  assignmentId String   @unique
+  judgeId      String
+  projectId    String
+  status       String   @default("DRAFT") // DRAFT, SUBMITTED
+  feedback     String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  event      Event             @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  assignment JudgeAssignment   @relation(fields: [assignmentId], references: [id], onDelete: Cascade)
+  judge      EventJudge        @relation(fields: [judgeId], references: [id], onDelete: Cascade)
+  project    Project           @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  scores     EvaluationScore[]
+
+  @@map("evaluations")
+}
+
+model EvaluationScore {
+  id           String   @id @default(uuid())
+  evaluationId String
+  criteriaId   String
+  score        Decimal
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  evaluation Evaluation         @relation(fields: [evaluationId], references: [id], onDelete: Cascade)
+  criteria   EvaluationCriteria @relation(fields: [criteriaId], references: [id], onDelete: Cascade)
+
+  @@unique([evaluationId, criteriaId])
+  @@map("evaluation_scores")
+}
+
+// --- ATTENDANCE ---
+
+model AttendanceEvent {
+  id          String    @id @default(uuid())
+  eventId     String
+  name        String
+  description String?
+  startAt     DateTime?
+  endAt       DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  event             Event        @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  attendanceRecords Attendance[]
+
+  @@map("attendance_events")
+}
+
+model Attendance {
+  id                String   @id @default(uuid())
+  eventId           String
+  userId            String
+  attendanceEventId String?
+  method            String // QR_SCAN, MANUAL
+  timestamp         DateTime @default(now())
+
+  event           Event            @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  user            User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  attendanceEvent AttendanceEvent? @relation(fields: [attendanceEventId], references: [id], onDelete: Cascade)
+
+  @@map("attendance")
+}
+
+// --- FILES ---
+
+model File {
+  id         String   @id @default(uuid())
+  ownerId    String
+  eventId    String?
+  storageKey String
+  fileName   String
+  mimeType   String
+  sizeBytes  Int
+  checksum   String?
+  status     String   @default("ACTIVE") // ACTIVE, DELETED
+  createdAt  DateTime @default(now())
+
+  owner User   @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  event Event? @relation(fields: [eventId], references: [id], onDelete: Cascade)
+
+  @@map("files")
+}
+
+// --- COMMUNICATION ---
+
+model EventAnnouncement {
+  id        String   @id @default(uuid())
+  eventId   String
+  title     String
+  content   String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  event Event @relation(fields: [eventId], references: [id], onDelete: Cascade)
+
+  @@map("event_announcements")
+}
+
+model Notification {
+  id        String   @id @default(uuid())
+  userId    String
+  title     String
+  content   String
+  isRead    Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("notifications")
+}
+
+// --- SYSTEM ---
+
+model AuditLog {
+  id             String   @id @default(uuid())
+  actorId        String
+  eventId        String?
+  organizationId String?
+  action         String
+  resourceType   String
+  resourceId     String?
+  metadata       String? // JSON represented as String
+  ipAddress      String?
+  timestamp      DateTime @default(now())
+
+  actor User @relation(fields: [actorId], references: [id], onDelete: Cascade)
+
+  @@map("audit_logs")
+}
+
+model IdempotencyKey {
+  id           String   @id @default(uuid())
+  key          String
+  userId       String
+  requestPath  String
+  responseBody String? // JSON represented as String
+  status       Int
+  createdAt    DateTime @default(now())
+
+  @@unique([userId, key])
+  @@map("idempotency_keys")
 }
