@@ -18,6 +18,7 @@ export default function SignUpPage() {
     website: "",
     password: "",
     confirmPassword: "",
+    organizerKey: "",
     agreeTerms: false,
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -31,6 +32,7 @@ export default function SignUpPage() {
       if (!formData.email) e.email = "Email is required";
       else if (!/\S+@\S+\.\S+/.test(formData.email)) e.email = "Enter a valid email";
       if (!formData.designation.trim()) e.designation = "Designation is required";
+      if (!formData.organizerKey.trim()) e.organizerKey = "Organizer Secret Key is required";
     } else if (currentStep === 2) {
       if (!formData.organizationName.trim()) e.organizationName = "Organisation name is required";
     } else if (currentStep === 3) {
@@ -75,6 +77,7 @@ export default function SignUpPage() {
     data.append("designation", formData.designation);
     data.append("website", formData.website);
     data.append("password", formData.password);
+    data.append("organizerKey", formData.organizerKey);
 
     startTransition(() => {
       formAction(data);
@@ -119,7 +122,15 @@ export default function SignUpPage() {
             {step === 1 && (
               <>
                 <div className="mt-5 grid gap-3 sm:grid-cols-2">
-                  <SocialButton icon={<GoogleIcon />} label="Continue with Google" href="/api/auth/google" />
+                  <SocialButton
+                    icon={<GoogleIcon />}
+                    label="Continue with Google"
+                    href={
+                      formData.organizerKey
+                        ? `/api/auth/google?role=organizer&key=${encodeURIComponent(formData.organizerKey)}`
+                        : `/api/auth/google?role=organizer`
+                    }
+                  />
                   <SocialButton icon={<AppleIcon />} label="Continue with Apple" />
                 </div>
                 <div className="my-5 text-center text-xs font-medium uppercase tracking-wider text-zinc-400">
@@ -141,6 +152,16 @@ export default function SignUpPage() {
               {/* STEP 1 */}
               {step === 1 && (
                 <div className="space-y-3">
+                  <FieldBox
+                    label="Organizer Secret Access Key"
+                    name="organizerKey"
+                    type="password"
+                    value={formData.organizerKey}
+                    onChange={handleChange}
+                    error={errors.organizerKey}
+                    placeholder="Enter secret key (e.g. SNIST2026)"
+                  />
+
                   <FieldBox
                     label="Full Name"
                     name="fullName"

@@ -12,9 +12,15 @@ export async function signUpAction(prevState: any, formData: FormData) {
   const organizationName = (formData.get("organizationName") as string || "").trim();
   const website = (formData.get("website") as string || "").trim() || null;
   const password = formData.get("password") as string || "";
+  const organizerKey = (formData.get("organizerKey") as string || "").trim();
+  const secretKey = process.env.ORGANIZER_SECRET_KEY || "SNIST2026";
 
   if (!fullName || !email || !designation || !organizationName || !password) {
     return { success: false, error: "Missing required fields." };
+  }
+
+  if (!organizerKey || organizerKey !== secretKey) {
+    return { success: false, error: "Invalid Organizer Secret Access Key." };
   }
 
   const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;

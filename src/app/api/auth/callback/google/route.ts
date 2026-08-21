@@ -38,14 +38,35 @@ export async function GET(request: NextRequest) {
     );
   }
 
-  // ── CSRF: Validate state token ───────────────────────────────────────────────
+  // ── CSRF: Validate state token & Role Payload ─────────────────────────────────
   const cookieStore = await cookies();
-  const storedState = cookieStore.get("google_oauth_state")?.value;
+  const storedStateRaw = cookieStore.get("google_oauth_state")?.value;
   cookieStore.delete("google_oauth_state"); // consume immediately
 
-  if (!storedState || storedState !== stateFromGoogle) {
+  let storedToken = storedStateRaw;
+  let isVerifiedOrganizer = true;
+  let role = "organizer";
+
+  if (storedStateRaw && storedStateRaw.startsWith("{")) {
+    try {
+      const parsed = JSON.parse(storedStateRaw);
+      storedToken = parsed.token;
+      role = parsed.role || "organizer";
+      isVerifiedOrganizer = parsed.verified ?? true;
+    } catch (e) {
+      // fallback
+    }
+  }
+
+  if (!storedToken || storedToken !== stateFromGoogle) {
     return NextResponse.redirect(
       `${appUrl}/sign-in?error=${encodeURIComponent("Security check failed. Please try again.")}`
+    );
+  }
+
+  if (role === "organizer" && !isVerifiedOrganizer) {
+    return NextResponse.redirect(
+      `${appUrl}/sign-in?error=${encodeURIComponent("Organizer Secret Access Key is required for Organizer login.")}`
     );
   }
 

@@ -10,6 +10,75 @@ interface ValidationCriteria {
   notes: string;
 }
 
+function computeDeterministicAudit(problemText: string, solutionText: string, audienceText: string) {
+  const p = problemText.trim();
+  const s = solutionText.trim();
+  const a = audienceText.trim();
+
+  // 1. Problem Depth Score (0 - 35)
+  const problemLengthScore = Math.min(20, Math.floor(p.length / 10));
+  const problemKeywords = ["frustrat", "slow", "hard", "difficult", "problem", "expensive", "manual", "lack", "fail", "issue", "struggle", "waste", "cost", "inefficient"];
+  const problemKeywordMatch = problemKeywords.filter((kw) => p.toLowerCase().includes(kw)).length;
+  const problemScore = Math.min(35, problemLengthScore + problemKeywordMatch * 5);
+
+  // 2. Solution Viability Score (0 - 35)
+  const solutionLengthScore = Math.min(20, Math.floor(s.length / 10));
+  const solutionKeywords = ["ai", "automated", "platform", "app", "system", "real-time", "dashboard", "api", "database", "analytics", "cloud", "workflow", "tool", "smart", "instant"];
+  const solutionKeywordMatch = solutionKeywords.filter((kw) => s.toLowerCase().includes(kw)).length;
+  const solutionScore = Math.min(35, solutionLengthScore + solutionKeywordMatch * 5);
+
+  // 3. Audience Specificity Score (0 - 30)
+  const audienceLengthScore = Math.min(15, Math.floor(a.length / 8));
+  const audienceKeywords = ["student", "developer", "organizer", "business", "user", "engineer", "hospital", "founder", "team", "client", "customer", "company", "creator", "freelancer"];
+  const audienceKeywordMatch = audienceKeywords.filter((kw) => a.toLowerCase().includes(kw)).length;
+  const audienceScore = Math.min(30, audienceLengthScore + audienceKeywordMatch * 5);
+
+  // Deterministic score algorithms
+  const calcFeasibility = Math.min(100, Math.max(35, Math.round(30 + solutionScore * 1.3 + (p.length > 50 ? 15 : 5))));
+  const calcMarketFit = Math.min(100, Math.max(35, Math.round(25 + problemScore * 1.2 + audienceScore * 1.1)));
+
+  // Deterministic complexity
+  const totalLength = p.length + s.length + a.length;
+  let calcComplexity = "Medium";
+  if (totalLength < 120) {
+    calcComplexity = "Low";
+  } else if (totalLength > 350 || solutionKeywordMatch >= 4) {
+    calcComplexity = "High";
+  }
+
+  // Checklist Generation
+  const checklist: ValidationCriteria[] = [
+    {
+      label: "Real-world Problem Statement Depth",
+      passed: p.length >= 40 && problemKeywordMatch >= 1,
+      notes: p.length < 40 
+        ? "Problem description is brief. Add specific details about user pain points." 
+        : `Detailed problem definition detected (${problemKeywordMatch} friction indicators matched).`,
+    },
+    {
+      label: "Clear Target Audience Definition",
+      passed: a.length >= 20 && audienceKeywordMatch >= 1,
+      notes: a.length < 20
+        ? "Target audience is too broad. Specify who will use or pay for this solution."
+        : `Explicit target user demographic specified (${audienceKeywordMatch} key user terms identified).`,
+    },
+    {
+      label: "MVP Scoping & Timeline Viability",
+      passed: s.length >= 40 && calcFeasibility >= 60,
+      notes: calcFeasibility >= 75
+        ? "Solution scope is manageable and well-suited for a 48-hour hackathon timeline."
+        : "Solution scope might be broad. Focus on a tight core MVP to avoid feature creep.",
+    },
+    {
+      label: "High-Traffic Concurrency & Pooling Check",
+      passed: calcFeasibility >= 70,
+      notes: "Ensure Supabase database connection pooler (port 6543) and SSL settings are enabled for live operations.",
+    },
+  ];
+
+  return { calcFeasibility, calcMarketFit, calcComplexity, checklist };
+}
+
 export default function TeamIdeatePage() {
   const [problem, setProblem] = useState("");
   const [solution, setSolution] = useState("");
@@ -35,43 +104,22 @@ export default function TeamIdeatePage() {
           setProblem(idea.problem);
           setSolution(idea.solution);
           setTargetAudience(idea.targetAudience);
-          setFeasibilityScore(idea.feasibilityScore);
-          setMarketFitScore(idea.marketFitScore);
-          setComplexity(idea.complexity);
-          setValidationDone(true);
           
-          // Re-generate checklist recommendations locally
-          setChecklist([
-            {
-              label: "Real-world Problem Statement",
-              passed: idea.problem.trim().length > 30,
-              notes: idea.problem.trim().length > 30 
-                ? "Properly detailed problem definition detected." 
-                : "Problem explanation is too short. Try providing more context on user frustrations.",
-            },
-            {
-              label: "Clear Target Audience Defined",
-              passed: idea.targetAudience.trim().length > 15,
-              notes: idea.targetAudience.trim().length > 15
-                ? "Explicit user segments defined."
-                : "Target audience is too vague. Specify who exactly will pay or use this.",
-            },
-            {
-              label: "MVP Scoping Viability",
-              passed: true,
-              notes: "The console layout is manageable, but avoid feature-creep within a 48-hour timeline constraint.",
-            },
-            {
-              label: "Scalability Warning Check",
-              passed: false,
-              notes: "Prisma connections on Edge runtime require specific connection pool management (Neon adapters/driver-adapters) to handle high concurrency.",
-            },
-          ]);
+          const audit = computeDeterministicAudit(idea.problem, idea.solution, idea.targetAudience);
+          setFeasibilityScore(audit.calcFeasibility);
+          setMarketFitScore(audit.calcMarketFit);
+          setComplexity(audit.calcComplexity);
+          setChecklist(audit.checklist);
+          setValidationDone(true);
         } else {
           // Defaults if none saved
-          setProblem("Managing tasks and submissions in real-time is frustrating for hackathon teams using scattered platforms (Discord, spreadsheets, GitHub).");
-          setSolution("A unified Hackathon Operating System console (HackOS) providing real-time syncing, chat, mentor consultation bookings, and AI audits.");
-          setTargetAudience("Hackathon organizers seeking centralized dashboards and hackathon teams looking for quick coordination.");
+          const defaultProblem = "Managing tasks and submissions in real-time is frustrating for hackathon teams using scattered platforms (Discord, spreadsheets, GitHub).";
+          const defaultSolution = "A unified Hackathon Operating System console (HackOS) providing real-time syncing, chat, mentor consultation bookings, and AI audits.";
+          const defaultAudience = "Hackathon organizers seeking centralized dashboards and hackathon teams looking for quick coordination.";
+          
+          setProblem(defaultProblem);
+          setSolution(defaultSolution);
+          setTargetAudience(defaultAudience);
         }
       } catch (err) {
         console.error("Failed to load idea:", err);
@@ -89,10 +137,8 @@ export default function TeamIdeatePage() {
     setIsValidating(true);
     setValidationDone(false);
 
-    // Mock analyzer values
-    const calcFeasibility = Math.min(100, Math.max(40, Math.round(50 + Math.random() * 45)));
-    const calcMarketFit = Math.min(100, Math.max(40, Math.round(55 + Math.random() * 40)));
-    const calcComplexity = problem.length + solution.length > 250 ? "High" : "Medium";
+    // Compute deterministic analysis
+    const audit = computeDeterministicAudit(problem, solution, targetAudience);
 
     setTimeout(async () => {
       try {
@@ -100,48 +146,22 @@ export default function TeamIdeatePage() {
           problem,
           solution,
           targetAudience,
-          calcFeasibility,
-          calcMarketFit,
-          calcComplexity
+          audit.calcFeasibility,
+          audit.calcMarketFit,
+          audit.calcComplexity
         );
       } catch (err) {
         console.error("Failed to save idea details to database:", err);
       }
 
-      setFeasibilityScore(calcFeasibility);
-      setMarketFitScore(calcMarketFit);
-      setComplexity(calcComplexity);
-      
-      setChecklist([
-        {
-          label: "Real-world Problem Statement",
-          passed: problem.trim().length > 30,
-          notes: problem.trim().length > 30 
-            ? "Properly detailed problem definition detected." 
-            : "Problem explanation is too short. Try providing more context on user frustrations.",
-        },
-        {
-          label: "Clear Target Audience Defined",
-          passed: targetAudience.trim().length > 15,
-          notes: targetAudience.trim().length > 15
-            ? "Explicit user segments defined."
-            : "Target audience is too vague. Specify who exactly will pay or use this.",
-        },
-        {
-          label: "MVP Scoping Viability",
-          passed: true,
-          notes: "The console layout is manageable, but avoid feature-creep within a 48-hour timeline constraint.",
-        },
-        {
-          label: "Scalability Warning Check",
-          passed: false,
-          notes: "Prisma connections on Edge runtime require specific connection pool management (Neon adapters/driver-adapters) to handle high concurrency.",
-        },
-      ]);
+      setFeasibilityScore(audit.calcFeasibility);
+      setMarketFitScore(audit.calcMarketFit);
+      setComplexity(audit.calcComplexity);
+      setChecklist(audit.checklist);
       
       setIsValidating(false);
       setValidationDone(true);
-    }, 1200);
+    }, 800);
   };
 
   if (isLoading) {

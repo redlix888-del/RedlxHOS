@@ -3,7 +3,12 @@ import { PrismaPg } from "@prisma/adapter-pg";
 import pg from "pg";
 
 const connectionString = process.env.DATABASE_URL;
-const pool = new pg.Pool({ connectionString });
+const pool = new pg.Pool({
+  connectionString,
+  ssl: connectionString?.includes("localhost") || connectionString?.includes("127.0.0.1")
+    ? false
+    : { rejectUnauthorized: false },
+});
 const adapter = new PrismaPg(pool);
 
 const globalForPrisma = globalThis as unknown as {

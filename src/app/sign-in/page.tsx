@@ -10,6 +10,7 @@ import { Loader2, ArrowLeft } from "lucide-react";
 export default function SignInPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [organizerKey, setOrganizerKey] = useState("");
   const [emailError, setEmailError] = useState("");
   const [passwordError, setPasswordError] = useState("");
   
@@ -75,9 +76,29 @@ export default function SignInPage() {
               </p>
             </div>
 
+            {/* Organizer Secret Key Input for OAuth */}
+            <div className="mt-5">
+              <FieldBox
+                label="Organizer Secret Access Key (Required for Google Auth)"
+                name="organizerKey"
+                type="password"
+                value={organizerKey}
+                onChange={(e) => setOrganizerKey(e.target.value)}
+                placeholder="Enter secret key (e.g. SNIST2026)"
+              />
+            </div>
+
             {/* Social Buttons */}
-            <div className="mt-6 grid gap-3 sm:grid-cols-2">
-              <SocialButton icon={<GoogleIcon />} label="Continue with Google" href="/api/auth/google" />
+            <div className="mt-4 grid gap-3 sm:grid-cols-2">
+              <SocialButton
+                icon={<GoogleIcon />}
+                label="Continue with Google"
+                href={
+                  organizerKey
+                    ? `/api/auth/google?role=organizer&key=${encodeURIComponent(organizerKey)}`
+                    : `/api/auth/google?role=organizer`
+                }
+              />
               <SocialButton icon={<AppleIcon />} label="Continue with Apple" />
             </div>
 
