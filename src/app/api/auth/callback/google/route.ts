@@ -158,7 +158,7 @@ export async function GET(request: NextRequest) {
 
     // ── Set session cookie (same system used for credentials auth) ──────────────
     await setSessionCookie(organizer.id);
-    return NextResponse.redirect(`${appUrl}/organizer`);
+    return NextResponse.redirect(`${appUrl}/organizer/dashboard`);
   } catch (err) {
     console.error("[Google OAuth] DB upsert error:", err);
     return NextResponse.redirect(
