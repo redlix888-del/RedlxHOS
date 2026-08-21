@@ -2,23 +2,31 @@
 
 import { useState, useActionState, startTransition, useEffect } from "react";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import { verifyJoinCodeAction, joinTeamAction } from "../../actions/team-auth-actions";
 import { GrainGradient } from "@paper-design/shaders-react";
 import { FieldBox } from "@/components/ui/auth-section-1";
-import { Users, Loader2, ArrowRight, CheckCircle2, ArrowLeft } from "lucide-react";
+import { Users, Loader2, ArrowRight, CheckCircle2, ArrowLeft, Sparkles } from "lucide-react";
 
 interface JoinTeamFormProps {
   initialCode: string | null;
 }
 
 export default function JoinTeamForm({ initialCode }: JoinTeamFormProps) {
+  const searchParams = useSearchParams();
+  const googleName = searchParams.get("googleName") || "";
+  const googleEmail = searchParams.get("googleEmail") || "";
+  const googleId = searchParams.get("googleId") || "";
+  const googleAvatar = searchParams.get("googleAvatar") || "";
+  const infoParam = searchParams.get("info") || "";
+
   const [step, setStep] = useState(initialCode ? 2 : 1);
   const [joinCode, setJoinCode] = useState(initialCode || "");
   const [verifiedTeam, setVerifiedTeam] = useState<{ id: string; name: string } | null>(null);
   
   const [formData, setFormData] = useState({
-    fullName: "",
-    email: "",
+    fullName: googleName || "",
+    email: googleEmail || "",
     password: "",
     confirmPassword: "",
   });
@@ -40,6 +48,16 @@ export default function JoinTeamForm({ initialCode }: JoinTeamFormProps) {
       });
     }
   }, [initialCode]);
+
+  useEffect(() => {
+    if (googleName || googleEmail) {
+      setFormData((prev) => ({
+        ...prev,
+        fullName: prev.fullName || googleName,
+        email: prev.email || googleEmail,
+      }));
+    }
+  }, [googleName, googleEmail]);
 
   const handleVerifyCode = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -63,9 +81,13 @@ export default function JoinTeamForm({ initialCode }: JoinTeamFormProps) {
     if (!formData.fullName.trim()) e.fullName = "Full name is required";
     if (!formData.email) e.email = "Email is required";
     else if (!/\S+@\S+\.\S+/.test(formData.email)) e.email = "Enter a valid email address";
-    if (!formData.password) e.password = "Password is required";
-    else if (formData.password.length < 6) e.password = "Password must be at least 6 characters";
-    if (formData.password !== formData.confirmPassword) e.confirmPassword = "Passwords do not match";
+
+    // Password is only mandatory for non-OAuth sign-ups
+    if (!googleId) {
+      if (!formData.password) e.password = "Password is required";
+      else if (formData.password.length < 6) e.password = "Password must be at least 6 characters";
+      if (formData.password !== formData.confirmPassword) e.confirmPassword = "Passwords do not match";
+    }
     return e;
   };
 
@@ -85,6 +107,8 @@ export default function JoinTeamForm({ initialCode }: JoinTeamFormProps) {
     data.append("email", formData.email);
     data.append("password", formData.password);
     data.append("teamId", verifiedTeam.id);
+    if (googleId) data.append("googleId", googleId);
+    if (googleAvatar) data.append("avatarUrl", googleAvatar);
 
     startTransition(() => {
       formAction(data);
@@ -124,6 +148,14 @@ export default function JoinTeamForm({ initialCode }: JoinTeamFormProps) {
                   : `Creating developer profile for team: ${verifiedTeam?.name}`}
               </p>
             </div>
+
+            {/* Google OAuth info banner */}
+            {(infoParam || googleEmail) && (
+              <div className="bg-red-50 text-[#E61E32] text-xs p-3.5 border border-red-200 my-3 font-semibold rounded-xl flex items-center gap-2">
+                <Sparkles className="w-4 h-4 shrink-0" />
+                <span>Google connected ({googleEmail}). Enter your team invite code to link your account.</span>
+              </div>
+            )}
 
             {/* Error banners */}
             {codeError && (
@@ -188,28 +220,30 @@ export default function JoinTeamForm({ initialCode }: JoinTeamFormProps) {
                   autoComplete="email"
                 />
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  <FieldBox
-                    label="Password"
-                    name="password"
-                    type="password"
-                    value={formData.password}
-                    onChange={handleChange}
-                    error={errors.password}
-                    placeholder="Min. 6 chars"
-                    autoComplete="new-password"
-                  />
-                  <FieldBox
-                    label="Confirm Password"
-                    name="confirmPassword"
-                    type="password"
-                    value={formData.confirmPassword}
-                    onChange={handleChange}
-                    error={errors.confirmPassword}
-                    placeholder="Confirm"
-                    autoComplete="new-password"
-                  />
-                </div>
+                {!googleId && (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <FieldBox
+                      label="Password"
+                      name="password"
+                      type="password"
+                      value={formData.password}
+                      onChange={handleChange}
+                      error={errors.password}
+                      placeholder="Min. 6 chars"
+                      autoComplete="new-password"
+                    />
+                    <FieldBox
+                      label="Confirm Password"
+                      name="confirmPassword"
+                      type="password"
+                      value={formData.confirmPassword}
+                      onChange={handleChange}
+                      error={errors.confirmPassword}
+                      placeholder="Confirm"
+                      autoComplete="new-password"
+                    />
+                  </div>
+                )}
 
                 <div className="flex gap-3 pt-2">
                   <button
@@ -277,4 +311,3 @@ export default function JoinTeamForm({ initialCode }: JoinTeamFormProps) {
     </section>
   );
 }
-
