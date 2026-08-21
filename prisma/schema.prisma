@@ -552,6 +552,16 @@ model TeamInvitation {
   @@map("team_invitations")
 }
 
+model OTPVerification {
+  id        String   @id @default(uuid())
+  email     String   @unique
+  otp       String
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  @@map("otp_verifications")
+}
+
 // --- PROJECT & SUBMISSION ---
 
 model Project {

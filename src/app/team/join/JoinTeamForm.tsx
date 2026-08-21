@@ -2,7 +2,7 @@
 
 import { useState, useActionState, startTransition, useEffect } from "react";
 import Link from "next/link";
-import { verifyJoinCodeAction, joinTeamAction } from "../../actions/team-auth-actions";
+import { verifyJoinCodeAction, joinTeamAction, sendJoinTeamOTPAction } from "../../actions/team-auth-actions";
 import { GrainGradient } from "@paper-design/shaders-react";
 import { FieldBox } from "@/components/ui/auth-section-1";
 import { Users, Loader2, ArrowRight, CheckCircle2, ArrowLeft } from "lucide-react";
@@ -21,9 +21,12 @@ export default function JoinTeamForm({ initialCode }: JoinTeamFormProps) {
     email: "",
     password: "",
     confirmPassword: "",
+    otp: "",
   });
 
   const [codeError, setCodeError] = useState("");
+  const [customError, setCustomError] = useState<string | null>(null);
+  const [isSendingOTP, setIsSendingOTP] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [state, formAction, isPending] = useActionState(joinTeamAction, null);
 
@@ -69,9 +72,10 @@ export default function JoinTeamForm({ initialCode }: JoinTeamFormProps) {
     return e;
   };
 
-  const handleSubmitProfile = (e: React.FormEvent) => {
+  const handleSendOTP = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!verifiedTeam) return;
+    setCustomError(null);
 
     const validationErrors = validateProfile();
     if (Object.keys(validationErrors).length > 0) {
@@ -79,12 +83,40 @@ export default function JoinTeamForm({ initialCode }: JoinTeamFormProps) {
       return;
     }
     setErrors({});
+    setIsSendingOTP(true);
 
     const data = new FormData();
     data.append("fullName", formData.fullName);
     data.append("email", formData.email);
     data.append("password", formData.password);
     data.append("teamId", verifiedTeam.id);
+
+    const res = await sendJoinTeamOTPAction(data);
+    setIsSendingOTP(false);
+
+    if (res.success) {
+      setStep(3);
+    } else {
+      setCustomError(res.error || "Failed to send OTP.");
+    }
+  };
+
+  const handleVerifyOTP = (e: React.FormEvent) => {
+    e.preventDefault();
+    setCustomError(null);
+    if (!formData.otp.trim()) {
+      setErrors({ otp: "OTP is required" });
+      return;
+    }
+    setErrors({});
+    if (!verifiedTeam) return;
+
+    const data = new FormData();
+    data.append("fullName", formData.fullName);
+    data.append("email", formData.email);
+    data.append("password", formData.password);
+    data.append("teamId", verifiedTeam.id);
+    data.append("otp", formData.otp);
 
     startTransition(() => {
       formAction(data);
@@ -97,11 +129,13 @@ export default function JoinTeamForm({ initialCode }: JoinTeamFormProps) {
     if (errors[name]) setErrors((prev) => ({ ...prev, [name]: "" }));
   };
 
+  const errorMsg = customError || state?.error;
+
   return (
     <section className="h-screen max-h-screen overflow-hidden bg-zinc-50 p-3 text-zinc-900 antialiased [font-synthesis:none]">
       <div className="grid h-[calc(100vh-1.5rem)] gap-4 lg:gap-6 lg:grid-cols-[1.18fr_0.82fr] overflow-hidden">
         
-        {/* Left Form Card - Crisp Light */}
+        {/* Left Form Card */}
         <div className="flex h-full flex-col justify-between overflow-y-auto rounded-xl border border-zinc-200 bg-white px-6 py-6 sm:px-10 shadow-sm lg:px-12 lg:py-8 xl:px-16">
           <div className="mx-auto w-full max-w-[500px] my-auto">
             
@@ -116,24 +150,26 @@ export default function JoinTeamForm({ initialCode }: JoinTeamFormProps) {
                 <span className="text-zinc-800 font-medium">Join Team</span>
               </nav>
               <h1 className="text-2xl sm:text-3xl lg:text-[34px] font-medium tracking-tight text-zinc-950 lg:leading-[1.15]">
-                {step === 1 ? "Join Team Squad" : "Complete Registration"}
+                {step === 1 ? "Join Team Squad" : step === 2 ? "Complete Registration" : "Verify Email"}
               </h1>
               <p className="mt-1 text-xs sm:text-sm text-zinc-500 font-normal">
                 {step === 1 
                   ? "Enter the unique 6-character team invite code from your Team Lead" 
-                  : `Creating developer profile for team: ${verifiedTeam?.name}`}
+                  : step === 2
+                  ? `Creating developer profile for team: ${verifiedTeam?.name}`
+                  : `Enter the 6-digit code sent to ${formData.email}`}
               </p>
             </div>
 
             {/* Error banners */}
-            {codeError && (
+            {codeError && step === 1 && (
               <div className="bg-red-50 text-red-700 text-xs p-3.5 border border-red-200 my-3 font-medium rounded-xl">
                 {codeError}
               </div>
             )}
-            {state?.error && (
+            {errorMsg && (step === 2 || step === 3) && (
               <div className="bg-red-50 text-red-700 text-xs p-3.5 border border-red-200 my-3 font-medium rounded-xl">
-                {state.error}
+                {errorMsg}
               </div>
             )}
 
@@ -161,7 +197,7 @@ export default function JoinTeamForm({ initialCode }: JoinTeamFormProps) {
 
             {/* STEP 2: PROFILE DETAILS */}
             {step === 2 && verifiedTeam && (
-              <form onSubmit={handleSubmitProfile} className="space-y-3 my-4" noValidate>
+              <form onSubmit={handleSendOTP} className="space-y-3 my-4" noValidate>
                 <div className="flex items-center gap-2 p-2.5 rounded-lg bg-green-50 border border-green-200 text-xs text-green-800 font-semibold">
                   <CheckCircle2 className="w-4 h-4 shrink-0" />
                   <span>Joining Team: <strong className="font-bold">{verifiedTeam.name}</strong></span>
@@ -221,19 +257,58 @@ export default function JoinTeamForm({ initialCode }: JoinTeamFormProps) {
                   </button>
                   <button
                     type="submit"
-                    disabled={isPending}
+                    disabled={isSendingOTP}
                     className="flex-1 h-12 rounded-xl bg-zinc-950 text-sm sm:text-base font-medium text-white transition-all hover:bg-zinc-800 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 cursor-pointer shadow-sm"
                   >
-                    {isPending ? (
+                    {isSendingOTP ? (
                       <>
                         <Loader2 className="w-4 h-4 animate-spin" />
-                        <span>Joining Team...</span>
+                        <span>Sending OTP...</span>
                       </>
                     ) : (
-                      "Join Squad & Launch Dashboard"
+                      "Continue to Verification"
                     )}
                   </button>
                 </div>
+              </form>
+            )}
+
+            {/* STEP 3: OTP VERIFICATION */}
+            {step === 3 && verifiedTeam && (
+              <form onSubmit={handleVerifyOTP} className="space-y-3 my-4" noValidate>
+                <FieldBox
+                  label="6-Digit OTP"
+                  name="otp"
+                  type="text"
+                  value={formData.otp}
+                  onChange={handleChange}
+                  error={errors.otp}
+                  placeholder="e.g. 123456"
+                  maxLength={6}
+                />
+                
+                <button
+                  type="submit"
+                  disabled={isPending}
+                  className="mt-3 flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-zinc-950 text-sm sm:text-base font-medium text-white transition-all hover:bg-zinc-800 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer shadow-sm"
+                >
+                  {isPending ? (
+                    <>
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                      <span>Verifying & Joining...</span>
+                    </>
+                  ) : (
+                    "Verify & Join Squad"
+                  )}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setStep(2)}
+                  disabled={isPending}
+                  className="mt-2 text-sm text-zinc-500 hover:text-zinc-800 text-center w-full transition-colors"
+                >
+                  Back to Details
+                </button>
               </form>
             )}
 
@@ -277,4 +352,3 @@ export default function JoinTeamForm({ initialCode }: JoinTeamFormProps) {
     </section>
   );
 }
-

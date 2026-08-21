@@ -2,9 +2,9 @@
 
 import { useState, useActionState, startTransition } from "react";
 import Link from "next/link";
-import { teamSignUpAction } from "../../actions/team-auth-actions";
+import { teamSignUpAction, sendTeamSignUpOTPAction } from "../../actions/team-auth-actions";
 import { GrainGradient } from "@paper-design/shaders-react";
-import { FieldBox, SocialButton, GoogleIcon, AppleIcon } from "@/components/ui/auth-section-1";
+import { FieldBox } from "@/components/ui/auth-section-1";
 import { Loader2, ArrowLeft } from "lucide-react";
 
 interface HackathonInfo {
@@ -17,19 +17,23 @@ interface TeamSignUpFormProps {
 }
 
 export default function TeamSignUpForm({ hackathon }: TeamSignUpFormProps) {
+  const [step, setStep] = useState<1 | 2>(1);
   const [formData, setFormData] = useState({
     teamName: "",
     teamLeadName: "",
     email: "",
     password: "",
     confirmPassword: "",
+    otp: "",
     hackathonId: hackathon.id,
   });
 
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [customError, setCustomError] = useState<string | null>(null);
+  const [isSendingOTP, setIsSendingOTP] = useState(false);
   const [state, formAction, isPending] = useActionState(teamSignUpAction, null);
 
-  const validate = () => {
+  const validateStep1 = () => {
     const e: Record<string, string> = {};
     if (!formData.teamName.trim()) e.teamName = "Team name is required";
     if (!formData.teamLeadName.trim()) e.teamLeadName = "Team lead name is required";
@@ -41,11 +45,39 @@ export default function TeamSignUpForm({ hackathon }: TeamSignUpFormProps) {
     return e;
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSendOTP = async (e: React.FormEvent) => {
     e.preventDefault();
-    const validationErrors = validate();
+    setCustomError(null);
+    const validationErrors = validateStep1();
     if (Object.keys(validationErrors).length > 0) {
       setErrors(validationErrors);
+      return;
+    }
+    setErrors({});
+    setIsSendingOTP(true);
+
+    const data = new FormData();
+    data.append("teamName", formData.teamName);
+    data.append("teamLeadName", formData.teamLeadName);
+    data.append("email", formData.email);
+    data.append("password", formData.password);
+    data.append("hackathonId", formData.hackathonId);
+
+    const res = await sendTeamSignUpOTPAction(data);
+    setIsSendingOTP(false);
+
+    if (res.success) {
+      setStep(2);
+    } else {
+      setCustomError(res.error || "Failed to send OTP.");
+    }
+  };
+
+  const handleVerifyOTP = (e: React.FormEvent) => {
+    e.preventDefault();
+    setCustomError(null);
+    if (!formData.otp.trim()) {
+      setErrors({ otp: "OTP is required" });
       return;
     }
     setErrors({});
@@ -56,6 +88,7 @@ export default function TeamSignUpForm({ hackathon }: TeamSignUpFormProps) {
     data.append("email", formData.email);
     data.append("password", formData.password);
     data.append("hackathonId", formData.hackathonId);
+    data.append("otp", formData.otp);
 
     startTransition(() => {
       formAction(data);
@@ -68,11 +101,13 @@ export default function TeamSignUpForm({ hackathon }: TeamSignUpFormProps) {
     if (errors[name]) setErrors((prev) => ({ ...prev, [name]: "" }));
   };
 
+  const errorMsg = customError || state?.error;
+
   return (
     <section className="h-screen max-h-screen overflow-hidden bg-zinc-50 p-3 text-zinc-900 antialiased [font-synthesis:none]">
       <div className="grid h-[calc(100vh-1.5rem)] gap-4 lg:gap-6 lg:grid-cols-[1.18fr_0.82fr] overflow-hidden">
         
-        {/* Left Form Card - Crisp Light */}
+        {/* Left Form Card */}
         <div className="flex h-full flex-col justify-between overflow-y-auto rounded-xl border border-zinc-200 bg-white px-6 py-6 sm:px-10 shadow-sm lg:px-12 lg:py-8 xl:px-16">
           <div className="mx-auto w-full max-w-[500px] my-auto">
             
@@ -87,93 +122,133 @@ export default function TeamSignUpForm({ hackathon }: TeamSignUpFormProps) {
                 <span className="text-zinc-800 font-medium truncate max-w-[200px]">Register Team ({hackathon.title})</span>
               </nav>
               <h1 className="text-2xl sm:text-3xl lg:text-[34px] font-medium tracking-tight text-zinc-950 lg:leading-[1.15]">
-                Register Team
+                {step === 1 ? "Register Team" : "Verify Email"}
               </h1>
               <p className="mt-1 text-xs sm:text-sm text-zinc-500 font-normal">
-                Set up your team credentials and enter the competition
+                {step === 1 
+                  ? "Set up your team credentials and enter the competition"
+                  : `Enter the 6-digit code sent to ${formData.email}`}
               </p>
             </div>
 
             {/* Error banner */}
-            {state?.error && (
+            {errorMsg && (
               <div className="bg-red-50 text-red-700 text-xs p-3.5 border border-red-200 my-3 font-medium rounded-xl">
-                {state.error}
+                {errorMsg}
               </div>
             )}
 
             {/* Form */}
-            <form onSubmit={handleSubmit} className="space-y-3 my-4" noValidate>
-              <input type="hidden" name="hackathonId" value={formData.hackathonId} />
+            {step === 1 ? (
+              <form onSubmit={handleSendOTP} className="space-y-3 my-4" noValidate>
+                <input type="hidden" name="hackathonId" value={formData.hackathonId} />
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <FieldBox
-                  label="Team Name"
-                  name="teamName"
-                  value={formData.teamName}
-                  onChange={handleChange}
-                  error={errors.teamName}
-                  placeholder="e.g. Neural Ninjas"
-                />
-                <FieldBox
-                  label="Team Lead Name"
-                  name="teamLeadName"
-                  value={formData.teamLeadName}
-                  onChange={handleChange}
-                  error={errors.teamLeadName}
-                  placeholder="e.g. John Doe"
-                  autoComplete="name"
-                />
-              </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <FieldBox
+                    label="Team Name"
+                    name="teamName"
+                    value={formData.teamName}
+                    onChange={handleChange}
+                    error={errors.teamName}
+                    placeholder="e.g. Neural Ninjas"
+                  />
+                  <FieldBox
+                    label="Team Lead Name"
+                    name="teamLeadName"
+                    value={formData.teamLeadName}
+                    onChange={handleChange}
+                    error={errors.teamLeadName}
+                    placeholder="e.g. John Doe"
+                    autoComplete="name"
+                  />
+                </div>
 
-              <FieldBox
-                label="Team Email Address"
-                name="email"
-                type="email"
-                value={formData.email}
-                onChange={handleChange}
-                error={errors.email}
-                autoComplete="email"
-                placeholder="e.g. lead@hackos.io"
-              />
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <FieldBox
-                  label="Password"
-                  name="password"
-                  type="password"
-                  value={formData.password}
+                  label="Team Email Address"
+                  name="email"
+                  type="email"
+                  value={formData.email}
                   onChange={handleChange}
-                  error={errors.password}
-                  autoComplete="new-password"
-                  placeholder="Min. 6 chars"
+                  error={errors.email}
+                  autoComplete="email"
+                  placeholder="e.g. lead@hackos.io"
                 />
-                <FieldBox
-                  label="Confirm Password"
-                  name="confirmPassword"
-                  type="password"
-                  value={formData.confirmPassword}
-                  onChange={handleChange}
-                  error={errors.confirmPassword}
-                  autoComplete="new-password"
-                  placeholder="Re-enter"
-                />
-              </div>
 
-              <button
-                type="submit"
-                disabled={isPending}
-                className="mt-3 flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-zinc-950 text-sm sm:text-base font-medium text-white transition-all hover:bg-zinc-800 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer shadow-sm"
-              >
-                {isPending ? (
-                  <>
-                    <Loader2 className="w-4 h-4 animate-spin" />
-                    <span>Registering Team...</span>
-                  </>
-                ) : (
-                  "Register Team & Launch Squad"
-                )}
-              </button>
-            </form>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <FieldBox
+                    label="Password"
+                    name="password"
+                    type="password"
+                    value={formData.password}
+                    onChange={handleChange}
+                    error={errors.password}
+                    autoComplete="new-password"
+                    placeholder="Min. 6 chars"
+                  />
+                  <FieldBox
+                    label="Confirm Password"
+                    name="confirmPassword"
+                    type="password"
+                    value={formData.confirmPassword}
+                    onChange={handleChange}
+                    error={errors.confirmPassword}
+                    autoComplete="new-password"
+                    placeholder="Re-enter"
+                  />
+                </div>
+
+                <button
+                  type="submit"
+                  disabled={isSendingOTP}
+                  className="mt-3 flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-zinc-950 text-sm sm:text-base font-medium text-white transition-all hover:bg-zinc-800 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer shadow-sm"
+                >
+                  {isSendingOTP ? (
+                    <>
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                      <span>Sending OTP...</span>
+                    </>
+                  ) : (
+                    "Continue to Verification"
+                  )}
+                </button>
+              </form>
+            ) : (
+              <form onSubmit={handleVerifyOTP} className="space-y-3 my-4" noValidate>
+                <FieldBox
+                  label="6-Digit OTP"
+                  name="otp"
+                  type="text"
+                  value={formData.otp}
+                  onChange={handleChange}
+                  error={errors.otp}
+                  placeholder="e.g. 123456"
+                  maxLength={6}
+                />
+                
+                <button
+                  type="submit"
+                  disabled={isPending}
+                  className="mt-3 flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-zinc-950 text-sm sm:text-base font-medium text-white transition-all hover:bg-zinc-800 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer shadow-sm"
+                >
+                  {isPending ? (
+                    <>
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                      <span>Verifying & Registering...</span>
+                    </>
+                  ) : (
+                    "Verify & Register Team"
+                  )}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setStep(1)}
+                  disabled={isPending}
+                  className="mt-2 text-sm text-zinc-500 hover:text-zinc-800 text-center w-full transition-colors"
+                >
+                  Back to Registration
+                </button>
+              </form>
+            )}
 
           </div>
         </div>
@@ -215,4 +290,3 @@ export default function TeamSignUpForm({ hackathon }: TeamSignUpFormProps) {
     </section>
   );
 }
-

@@ -2,6 +2,7 @@
 
 import { prisma } from "../../lib/db";
 import { hashPassword, verifyPassword, setTeamSessionCookie, clearTeamSessionCookie } from "../../lib/auth";
+import { generateOTP, sendOTPEmail, storeOTP, verifyOTP } from "../../lib/otp";
 import { redirect } from "next/navigation";
 import crypto from "crypto";
 
@@ -9,7 +10,7 @@ function generateJoinCode(): string {
   return crypto.randomBytes(3).toString("hex").toUpperCase();
 }
 
-export async function teamSignUpAction(prevState: any, formData: FormData) {
+export async function sendTeamSignUpOTPAction(formData: FormData) {
   const teamName = (formData.get("teamName") as string || "").trim();
   const teamLeadName = (formData.get("teamLeadName") as string || "").trim();
   const email = (formData.get("email") as string || "").trim().toLowerCase();
@@ -30,27 +31,53 @@ export async function teamSignUpAction(prevState: any, formData: FormData) {
   }
 
   try {
-    // 1. Verify Hackathon exists
     const hackathon = await prisma.hackathon.findUnique({
       where: { id: hackathonId },
     });
-
     if (!hackathon) {
       return { success: false, error: "Hackathon not found or inactive." };
     }
 
-    // 2. Check if email is registered as Team Lead or Team Member
-    const existingTeam = await prisma.team.findUnique({
-      where: { email },
-    });
-    const existingMember = await prisma.teamMember.findUnique({
-      where: { email },
-    });
+    const existingTeam = await prisma.team.findUnique({ where: { email } });
+    const existingMember = await prisma.teamMember.findUnique({ where: { email } });
 
     if (existingTeam || existingMember) {
       return { success: false, error: "Email is already registered for a team or member." };
     }
 
+    const otp = generateOTP();
+    await storeOTP(email, otp);
+    const emailResult = await sendOTPEmail(email, otp);
+    
+    if (!emailResult.success) {
+      return { success: false, error: emailResult.error };
+    }
+
+    return { success: true };
+  } catch (err: any) {
+    console.error("sendTeamSignUpOTP error:", err);
+    return { success: false, error: "Failed to send OTP. Please try again." };
+  }
+}
+
+export async function teamSignUpAction(prevState: any, formData: FormData) {
+  const teamName = (formData.get("teamName") as string || "").trim();
+  const teamLeadName = (formData.get("teamLeadName") as string || "").trim();
+  const email = (formData.get("email") as string || "").trim().toLowerCase();
+  const password = formData.get("password") as string || "";
+  const hackathonId = (formData.get("hackathonId") as string || "").trim();
+  const otp = (formData.get("otp") as string || "").trim();
+
+  if (!teamName || !teamLeadName || !email || !password || !hackathonId || !otp) {
+    return { success: false, error: "Missing required fields including OTP." };
+  }
+
+  const otpVerification = await verifyOTP(email, otp);
+  if (!otpVerification.success) {
+    return { success: false, error: otpVerification.error };
+  }
+
+  try {
     const passwordHash = hashPassword(password);
 
     let joinCode = generateJoinCode();
@@ -193,7 +220,7 @@ export async function verifyJoinCodeAction(joinCode: string) {
   }
 }
 
-export async function joinTeamAction(prevState: any, formData: FormData) {
+export async function sendJoinTeamOTPAction(formData: FormData) {
   const fullName = (formData.get("fullName") as string || "").trim();
   const email = (formData.get("email") as string || "").trim().toLowerCase();
   const password = formData.get("password") as string || "";
@@ -213,7 +240,6 @@ export async function joinTeamAction(prevState: any, formData: FormData) {
   }
 
   try {
-    // 1. Verify team and check capacity
     const team = await prisma.team.findUnique({
       where: { id: teamId },
       include: {
@@ -238,7 +264,47 @@ export async function joinTeamAction(prevState: any, formData: FormData) {
       return { success: false, error: "Email is already registered for a team or member." };
     }
 
+    const otp = generateOTP();
+    await storeOTP(email, otp);
+    const emailResult = await sendOTPEmail(email, otp);
+    
+    if (!emailResult.success) {
+      return { success: false, error: emailResult.error };
+    }
+
+    return { success: true };
+  } catch (err: any) {
+    console.error("sendJoinTeamOTPAction error:", err);
+    return { success: false, error: "Failed to send OTP. Please try again." };
+  }
+}
+
+export async function joinTeamAction(prevState: any, formData: FormData) {
+  const fullName = (formData.get("fullName") as string || "").trim();
+  const email = (formData.get("email") as string || "").trim().toLowerCase();
+  const password = formData.get("password") as string || "";
+  const teamId = (formData.get("teamId") as string || "").trim();
+  const otp = (formData.get("otp") as string || "").trim();
+
+  if (!fullName || !email || !password || !teamId || !otp) {
+    return { success: false, error: "Missing required fields including OTP." };
+  }
+
+  const otpVerification = await verifyOTP(email, otp);
+  if (!otpVerification.success) {
+    return { success: false, error: otpVerification.error };
+  }
+
+  try {
     const passwordHash = hashPassword(password);
+
+    const team = await prisma.team.findUnique({
+      where: { id: teamId },
+    });
+    
+    if(!team) {
+      return { success: false, error: "Team not found." };
+    }
 
     const member = await prisma.teamMember.create({
       data: {
@@ -272,4 +338,3 @@ export async function joinTeamAction(prevState: any, formData: FormData) {
 
   redirect("/team/dashboard");
 }
-
