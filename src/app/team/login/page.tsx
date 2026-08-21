@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { teamSignInAction } from "../../actions/team-auth-actions";
 import { GrainGradient } from "@paper-design/shaders-react";
-import { FieldBox, SocialButton, GoogleIcon, AppleIcon } from "@/components/ui/auth-section-1";
+import { FieldBox, SocialButton, GoogleIcon } from "@/components/ui/auth-section-1";
 import { Loader2, ArrowLeft } from "lucide-react";
 
 function LoginFormContent() {
@@ -84,9 +84,8 @@ function LoginFormContent() {
             </div>
 
             {/* Social Buttons */}
-            <div className="mt-6 grid gap-3 sm:grid-cols-2">
-              <SocialButton icon={<GoogleIcon />} label="Continue with Google" />
-              <SocialButton icon={<AppleIcon />} label="Continue with Apple" />
+            <div className="mt-6">
+              <SocialButton icon={<GoogleIcon />} label="Continue with Google" href="/api/team/auth/google" />
             </div>
 
             <div className="my-5 text-center text-xs font-medium uppercase tracking-wider text-zinc-400">

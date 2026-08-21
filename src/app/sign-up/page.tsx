@@ -4,7 +4,7 @@ import { useState, useActionState, startTransition } from "react";
 import Link from "next/link";
 import { signUpAction } from "../actions/auth-actions";
 import { GrainGradient } from "@paper-design/shaders-react";
-import { FieldBox, SocialButton, GoogleIcon, AppleIcon } from "@/components/ui/auth-section-1";
+import { FieldBox, SocialButton, GoogleIcon } from "@/components/ui/auth-section-1";
 import { Loader2, ArrowLeft } from "lucide-react";
 
 export default function SignUpPage() {
@@ -121,7 +121,7 @@ export default function SignUpPage() {
             {/* Social Buttons — only shown on step 1 */}
             {step === 1 && (
               <>
-                <div className="mt-5 grid gap-3 sm:grid-cols-2">
+                <div className="mt-5">
                   <SocialButton
                     icon={<GoogleIcon />}
                     label="Continue with Google"
@@ -131,7 +131,6 @@ export default function SignUpPage() {
                         : `/api/auth/google?role=organizer`
                     }
                   />
-                  <SocialButton icon={<AppleIcon />} label="Continue with Apple" />
                 </div>
                 <div className="my-5 text-center text-xs font-medium uppercase tracking-wider text-zinc-400">
                   or sign up with email

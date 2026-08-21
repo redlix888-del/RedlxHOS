@@ -199,8 +199,15 @@ export async function joinTeamAction(prevState: any, formData: FormData) {
   const password = formData.get("password") as string || "";
   const teamId = (formData.get("teamId") as string || "").trim();
 
-  if (!fullName || !email || !password || !teamId) {
+  const googleId = (formData.get("googleId") as string || "").trim() || null;
+  const avatarUrl = (formData.get("avatarUrl") as string || "").trim() || null;
+
+  if (!fullName || !email || !teamId) {
     return { success: false, error: "Missing required fields." };
+  }
+
+  if (!googleId && !password) {
+    return { success: false, error: "Password is required." };
   }
 
   const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -208,7 +215,7 @@ export async function joinTeamAction(prevState: any, formData: FormData) {
     return { success: false, error: "Please enter a valid email address." };
   }
 
-  if (password.length < 6) {
+  if (password && password.length < 6) {
     return { success: false, error: "Password must be at least 6 characters." };
   }
 
@@ -238,13 +245,19 @@ export async function joinTeamAction(prevState: any, formData: FormData) {
       return { success: false, error: "Email is already registered for a team or member." };
     }
 
-    const passwordHash = hashPassword(password);
+    const googleId = (formData.get("googleId") as string || "").trim() || null;
+    const avatarUrl = (formData.get("avatarUrl") as string || "").trim() || null;
+    const authProvider = googleId ? "google" : "credentials";
+    const passwordHash = password ? hashPassword(password) : null;
 
     const member = await prisma.teamMember.create({
       data: {
         fullName,
         email,
         passwordHash,
+        googleId,
+        authProvider,
+        avatarUrl,
         teamId,
       },
     });
