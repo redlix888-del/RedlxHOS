@@ -4,11 +4,11 @@ import { cookies } from "next/headers";
 
 /**
  * GET /api/auth/google
- * Initiates the Google OAuth flow.
+ * Initiates the Google OAuth flow for Organizer accounts.
  * Generates a CSRF-safe state token, stores it in a short-lived cookie,
  * then redirects the browser to Google's consent screen.
  */
-export async function GET(request: Request) {
+export async function GET() {
   const clientId = process.env.GOOGLE_CLIENT_ID;
   const appUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
 
@@ -18,39 +18,18 @@ export async function GET(request: Request) {
     });
   }
 
-  const { searchParams } = new URL(request.url);
-  const role = searchParams.get("role") || "organizer";
-  const key = (searchParams.get("key") || "").trim();
-
-  const secretKey = process.env.ORGANIZER_SECRET_KEY || "SNIST2026";
-
-  if (role === "organizer") {
-    if (!key || key !== secretKey) {
-      redirect(`${appUrl}/sign-in?error=${encodeURIComponent("Invalid Organizer Secret Access Key.")}`);
-    }
-  }
-
   // Generate a random state token for CSRF protection
-  const csrfToken = crypto.randomBytes(32).toString("hex");
-
-  // State payload stored in httpOnly cookie
-  const statePayload = JSON.stringify({
-    token: csrfToken,
-    role,
-    verified: role === "organizer" ? true : false,
-  });
+  const state = crypto.randomBytes(32).toString("hex");
 
   // Persist state in a short-lived, httpOnly cookie (10 minutes)
   const cookieStore = await cookies();
-  cookieStore.set("google_oauth_state", statePayload, {
+  cookieStore.set("google_oauth_state", state, {
     httpOnly: true,
     secure: process.env.NODE_ENV === "production",
     sameSite: "lax",
     path: "/",
     maxAge: 60 * 10, // 10 minutes
   });
-
-  const state = csrfToken;
 
   const redirectUri = `${appUrl}/api/auth/callback/google`;
 

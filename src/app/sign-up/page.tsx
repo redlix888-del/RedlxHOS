@@ -125,11 +125,7 @@ export default function SignUpPage() {
                   <SocialButton
                     icon={<GoogleIcon />}
                     label="Continue with Google"
-                    href={
-                      formData.organizerKey
-                        ? `/api/auth/google?role=organizer&key=${encodeURIComponent(formData.organizerKey)}`
-                        : `/api/auth/google?role=organizer`
-                    }
+                    href="/api/auth/google"
                   />
                 </div>
                 <div className="my-5 text-center text-xs font-medium uppercase tracking-wider text-zinc-400">
