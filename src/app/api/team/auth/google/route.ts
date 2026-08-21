@@ -9,7 +9,7 @@ import { cookies } from "next/headers";
  * The callback will look up / create a TeamMember by Google email.
  */
 export async function GET() {
-  const clientId = process.env.GOOGLE_CLIENT_ID;
+  const clientId = process.env.GOOGLE_CLIENT_ID || process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID;
   const appUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
 
   if (!clientId) {
