@@ -4,7 +4,7 @@ import { useState, useActionState, startTransition } from "react";
 import Link from "next/link";
 import { signInAction } from "../actions/auth-actions";
 import { GrainGradient } from "@paper-design/shaders-react";
-import { FieldBox, SocialButton, GoogleIcon, AppleIcon } from "@/components/ui/auth-section-1";
+import { FieldBox, SocialButton, GoogleIcon } from "@/components/ui/auth-section-1";
 import { Loader2, ArrowLeft } from "lucide-react";
 
 export default function SignInPage() {
@@ -76,9 +76,8 @@ export default function SignInPage() {
             </div>
 
             {/* Social Buttons */}
-            <div className="mt-6 grid gap-3 sm:grid-cols-2">
+            <div className="mt-6">
               <SocialButton icon={<GoogleIcon />} label="Continue with Google" href="/api/auth/google" />
-              <SocialButton icon={<AppleIcon />} label="Continue with Apple" />
             </div>
 
             <div className="my-5 text-center text-xs font-medium uppercase tracking-wider text-zinc-400">
