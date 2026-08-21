@@ -128,14 +128,26 @@ export async function GET(request: NextRequest) {
       return NextResponse.redirect(`${appUrl}/team/dashboard`);
     }
 
-    // 2. Check if a Team Lead exists with this email (Team model)
-    const existingTeamLead = await prisma.team.findUnique({
-      where: { email: googleProfile.email },
+    // 2. Check if a Team Lead exists with this googleId or email (Team model)
+    const existingTeamLead = await prisma.team.findFirst({
+      where: {
+        OR: [
+          { googleId: googleProfile.id },
+          { email: googleProfile.email },
+        ],
+      },
     });
 
     if (existingTeamLead) {
-      // Team lead signed in via Google — set their session via team ID
-      await setTeamSessionCookie(existingTeamLead.id);
+      const updatedTeam = await prisma.team.update({
+        where: { id: existingTeamLead.id },
+        data: {
+          googleId: googleProfile.id,
+          authProvider: "google",
+          avatarUrl: googleProfile.picture ?? existingTeamLead.avatarUrl,
+        },
+      });
+      await setTeamSessionCookie(updatedTeam.id);
       return NextResponse.redirect(`${appUrl}/team/dashboard`);
     }
 

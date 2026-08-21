@@ -128,7 +128,9 @@ model Team {
   teamName          String
   teamLeadName      String
   email             String             @unique
-  passwordHash      String
+  passwordHash      String?            // null for Google OAuth accounts
+  googleId          String?            @unique
+  authProvider      String             @default("credentials") // "credentials" | "google"
   joinCode          String             @unique
   score             Int                @default(0)
   avatarUrl         String?
