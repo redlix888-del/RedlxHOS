@@ -141,6 +141,10 @@ export async function sendMessageAction(
     throw new Error("Message exceeds maximum allowed length of 2000 characters.");
   }
 
+  if (cleanChannelId === "announcements") {
+    throw new Error("Only Hackathon Organizers can broadcast messages in announcements.");
+  }
+
   const isDm = cleanChannelId.startsWith("dm_") || !!recipientId;
   const isSquad = !isDm && (cleanChannelId === "team-squad" || cleanChannelId === "general");
 
