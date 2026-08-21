@@ -18,8 +18,6 @@ import {
   Paperclip,
   Smile,
   Mic,
-  Video,
-  Phone,
   Image,
   Camera,
   File,
@@ -29,6 +27,7 @@ import {
   MessageSquareDot,
   Star,
   Users,
+  CheckCheck,
 } from "lucide-react";
 import {
   fetchMessagesAction,
@@ -80,31 +79,120 @@ interface ChatContact {
   type: "teammate" | "judge";
 }
 
-const getBubbleColors = (name: string, isMe: boolean) => {
+// ── Light pastel palette for person-to-person messages strictly in Team Chat ──
+const SQUAD_LIGHT_PALETTE = [
+  {
+    bg: "bg-rose-50/90",
+    border: "border-rose-200/80",
+    senderText: "text-[#E61E32]",
+    badge: "bg-rose-100 text-[#E61E32]",
+    timeText: "text-zinc-500",
+    content: "text-zinc-900",
+  },
+  {
+    bg: "bg-sky-50/90",
+    border: "border-sky-200/80",
+    senderText: "text-sky-700",
+    badge: "bg-sky-100 text-sky-800",
+    timeText: "text-zinc-500",
+    content: "text-zinc-900",
+  },
+  {
+    bg: "bg-emerald-50/90",
+    border: "border-emerald-200/80",
+    senderText: "text-emerald-700",
+    badge: "bg-emerald-100 text-emerald-800",
+    timeText: "text-zinc-500",
+    content: "text-zinc-900",
+  },
+  {
+    bg: "bg-amber-50/90",
+    border: "border-amber-200/80",
+    senderText: "text-amber-800",
+    badge: "bg-amber-100 text-amber-900",
+    timeText: "text-zinc-500",
+    content: "text-zinc-900",
+  },
+  {
+    bg: "bg-purple-50/90",
+    border: "border-purple-200/80",
+    senderText: "text-purple-700",
+    badge: "bg-purple-100 text-purple-800",
+    timeText: "text-zinc-500",
+    content: "text-zinc-900",
+  },
+  {
+    bg: "bg-teal-50/90",
+    border: "border-teal-200/80",
+    senderText: "text-teal-700",
+    badge: "bg-teal-100 text-teal-800",
+    timeText: "text-zinc-500",
+    content: "text-zinc-900",
+  },
+  {
+    bg: "bg-indigo-50/90",
+    border: "border-indigo-200/80",
+    senderText: "text-indigo-700",
+    badge: "bg-indigo-100 text-indigo-800",
+    timeText: "text-zinc-500",
+    content: "text-zinc-900",
+  },
+  {
+    bg: "bg-orange-50/90",
+    border: "border-orange-200/80",
+    senderText: "text-orange-800",
+    badge: "bg-orange-100 text-orange-900",
+    timeText: "text-zinc-500",
+    content: "text-zinc-900",
+  },
+];
+
+const getMessageTheme = (senderName: string, isMe: boolean, isSquadChat: boolean) => {
+  if (isSquadChat) {
+    let hash = 0;
+    for (let i = 0; i < senderName.length; i++) {
+      hash = senderName.charCodeAt(i) + ((hash << 5) - hash);
+    }
+    const index = Math.abs(hash) % SQUAD_LIGHT_PALETTE.length;
+    return SQUAD_LIGHT_PALETTE[index];
+  }
+
+  // Non-team chat (Public channels & DMs)
   if (isMe) {
     return {
-      bg: "bg-red-500 text-white",
-      border: "border-red-600",
-      senderText: "text-white/90",
+      bg: "bg-[#E61E32]",
+      border: "border-[#c91527]",
+      senderText: "text-white/95",
       badge: "bg-white/20 text-white",
       timeText: "text-white/80",
       content: "text-white",
     };
   }
 
-  const themes = [
-    { bg: "bg-white text-zinc-900", border: "border-zinc-200", senderText: "text-sky-700", badge: "bg-sky-50 text-sky-700", timeText: "text-zinc-400", content: "text-zinc-800" },
-    { bg: "bg-white text-zinc-900", border: "border-zinc-200", senderText: "text-purple-700", badge: "bg-purple-50 text-purple-700", timeText: "text-zinc-400", content: "text-zinc-800" },
-    { bg: "bg-white text-zinc-900", border: "border-zinc-200", senderText: "text-emerald-700", badge: "bg-emerald-50 text-emerald-700", timeText: "text-zinc-400", content: "text-zinc-800" },
-    { bg: "bg-white text-zinc-900", border: "border-zinc-200", senderText: "text-amber-700", badge: "bg-amber-50 text-amber-700", timeText: "text-zinc-400", content: "text-zinc-800" },
-  ];
+  return {
+    bg: "bg-white",
+    border: "border-zinc-200",
+    senderText: "text-zinc-900",
+    badge: "bg-zinc-100 text-zinc-600",
+    timeText: "text-zinc-400",
+    content: "text-zinc-800",
+  };
+};
 
-  let hash = 0;
-  for (let i = 0; i < name.length; i++) {
-    hash = name.charCodeAt(i) + ((hash << 5) - hash);
-  }
-  const index = Math.abs(hash) % themes.length;
-  return themes[index];
+// Check if message was seen by others
+const isMessageSeen = (msg: Message, allMessages: Message[], currentUserName?: string) => {
+  const msgIndex = allMessages.findIndex((m) => m.id === msg.id);
+  if (msgIndex === -1) return true;
+
+  // If there is any subsequent message from another team member/user, this message is seen
+  const hasReplyFromOther = allMessages.slice(msgIndex + 1).some(
+    (m) => m.senderName !== currentUserName && m.senderName !== "System" && m.senderName !== "You"
+  );
+  if (hasReplyFromOther) return true;
+
+  // If the message has been delivered for more than 15 seconds, mark as seen
+  const ageMs = Date.now() - new Date(msg.createdAt).getTime();
+  return ageMs > 15000;
 };
 
 const renderSystemMessage = (content: string) => {
@@ -190,6 +278,8 @@ export default function TeamMessagesPage() {
   };
 
   const currentChannel = getActiveChannelConfig();
+  const isSquadChat = currentChannel.scope === "squad";
+  const isAnnouncementsChannel = currentChannel.id === "announcements";
 
   // Scroll to bottom without scrolling the parent dashboard window
   const scrollToBottom = () => {
@@ -258,7 +348,7 @@ export default function TeamMessagesPage() {
     };
     init();
 
-    // Auto-refresh interval (polling) without hijacking scroll
+    // Auto-refresh interval (polling)
     const interval = setInterval(() => {
       loadMessages(activeChannelId, false);
       loadChannelCounts();
@@ -277,6 +367,8 @@ export default function TeamMessagesPage() {
 
   const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (isAnnouncementsChannel) return;
+
     const text = inputText.trim();
     if (!text || isSending) return;
 
@@ -311,7 +403,6 @@ export default function TeamMessagesPage() {
         [activeChannelId]: (prev[activeChannelId] || 0) + 1,
       }));
 
-      // Immediate scroll down on send
       setTimeout(scrollToBottom, 50);
     } catch (err: any) {
       console.error("Failed to send message:", err);
@@ -325,7 +416,6 @@ export default function TeamMessagesPage() {
     (c) => c.name !== currentUser?.fullName && c.email !== currentUser?.email
   );
 
-  // Search and Filter logic for list
   const matchesSearch = (name: string) => {
     if (!searchQuery.trim()) return true;
     return name.toLowerCase().includes(searchQuery.toLowerCase());
@@ -334,7 +424,7 @@ export default function TeamMessagesPage() {
   return (
     <div className="h-[calc(100vh-3.5rem-3.75rem)] w-full flex flex-col md:flex-row bg-white overflow-hidden">
       
-      {/* ── Left Panel: Chat & Channel List (WhatsApp / Slack Style) ── */}
+      {/* ── Left Panel: Chat & Channel List ── */}
       <aside className="w-full md:w-80 lg:w-96 flex flex-col h-full border-r border-zinc-200 bg-zinc-50/70 shrink-0">
         
         {/* Top Header */}
@@ -605,14 +695,8 @@ export default function TeamMessagesPage() {
           </div>
 
           <div className="flex items-center gap-1.5 shrink-0">
-            <Button variant="ghost" size="icon" className="h-8 w-8 text-zinc-500 hover:text-zinc-950">
-              <Video className="w-4 h-4" />
-            </Button>
-            <Button variant="ghost" size="icon" className="h-8 w-8 text-zinc-500 hover:text-zinc-950">
-              <Phone className="w-4 h-4" />
-            </Button>
-            <Button variant="ghost" size="icon" className="h-8 w-8 text-zinc-500 hover:text-zinc-950">
-              <Search className="w-4 h-4" />
+            <Button variant="ghost" size="icon" className="h-8 w-8 text-zinc-500 hover:text-zinc-950" title="Channel info">
+              <Info className="w-4 h-4" />
             </Button>
           </div>
         </div>
@@ -643,27 +727,41 @@ export default function TeamMessagesPage() {
                 );
               }
 
-              const bubbleTheme = getBubbleColors(msg.senderName, isMe);
+              const theme = getMessageTheme(msg.senderName, isMe, isSquadChat);
+              const seen = isMessageSeen(msg, messages, currentUser?.fullName);
 
               if (isMe) {
                 return (
                   <div key={msg.id} className="flex justify-end w-full pl-12">
-                    <div className="bg-[#E61E32] text-white rounded-2xl rounded-tr-none px-4 py-2.5 max-w-[80%] md:max-w-[70%] shadow-sm">
-                      <div className="flex items-center justify-between gap-3 mb-1 border-b border-white/20 pb-0.5">
-                        <span className="text-[10px] font-bold text-white/90">
+                    <div className={`${theme.bg} ${theme.border} border rounded-2xl rounded-tr-none px-4 py-2.5 max-w-[80%] md:max-w-[70%] shadow-xs`}>
+                      <div className="flex items-center justify-between gap-3 mb-1 border-b border-black/5 pb-0.5">
+                        <span className={`text-[10px] font-bold ${theme.senderText}`}>
                           {msg.senderName} (You)
                         </span>
-                        <span className="text-[9px] bg-white/20 text-white px-1.5 py-0.2 rounded font-bold uppercase">
+                        <span className={`text-[9px] ${theme.badge} px-1.5 py-0.2 rounded font-bold uppercase`}>
                           {msg.senderRole}
                         </span>
                       </div>
-                      <p className="text-xs text-white leading-relaxed font-medium break-words">
+                      <p className={`text-xs ${theme.content} leading-relaxed font-medium break-words`}>
                         {msg.content}
                       </p>
-                      <div className="flex items-center justify-end mt-1">
-                        <span className="text-[9px] text-white/75 font-normal">
+                      
+                      {/* Message Timestamp & Seen/Delivered Status Ticks */}
+                      <div className="flex items-center justify-end gap-1.5 mt-1">
+                        <span className={`text-[9px] ${theme.timeText} font-normal`}>
                           {msg.createdAt.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
                         </span>
+                        {seen ? (
+                          <CheckCheck
+                            className={`w-3.5 h-3.5 shrink-0 ${isSquadChat ? "text-[#E61E32]" : "text-white"}`}
+                            title="Seen / Read"
+                          />
+                        ) : (
+                          <CheckCheck
+                            className={`w-3.5 h-3.5 shrink-0 ${isSquadChat ? "text-zinc-400" : "text-white/50"}`}
+                            title="Sent & Delivered (Not seen yet)"
+                          />
+                        )}
                       </div>
                     </div>
                   </div>
@@ -681,20 +779,22 @@ export default function TeamMessagesPage() {
                     </AvatarFallback>
                   </Avatar>
 
-                  <div className="bg-white border border-zinc-200 rounded-2xl rounded-tl-none px-4 py-2.5 max-w-[80%] md:max-w-[70%] shadow-xs">
-                    <div className="flex items-center justify-between gap-3 mb-1 border-b border-zinc-100 pb-0.5">
-                      <span className="text-[10px] font-bold text-zinc-900">
+                  <div className={`${theme.bg} ${theme.border} border rounded-2xl rounded-tl-none px-4 py-2.5 max-w-[80%] md:max-w-[70%] shadow-xs`}>
+                    <div className="flex items-center justify-between gap-3 mb-1 border-b border-black/5 pb-0.5">
+                      <span className={`text-[10px] font-bold ${theme.senderText}`}>
                         {msg.senderName}
                       </span>
-                      <span className="text-[9px] bg-zinc-100 text-zinc-600 px-1.5 py-0.2 rounded font-medium uppercase">
+                      <span className={`text-[9px] ${theme.badge} px-1.5 py-0.2 rounded font-medium uppercase`}>
                         {msg.senderRole}
                       </span>
                     </div>
-                    <p className="text-xs text-zinc-800 leading-relaxed font-medium break-words">
+                    <p className={`text-xs ${theme.content} leading-relaxed font-medium break-words`}>
                       {msg.content}
                     </p>
-                    <div className="flex items-center justify-start mt-1">
-                      <span className="text-[9px] text-zinc-400 font-normal">
+                    
+                    {/* Incoming Message Timestamp aligned to the RIGHT BOTTOM */}
+                    <div className="flex items-center justify-end mt-1">
+                      <span className={`text-[9px] ${theme.timeText} font-normal`}>
                         {msg.createdAt.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
                       </span>
                     </div>
@@ -725,76 +825,85 @@ export default function TeamMessagesPage() {
                   ? "Messages sent here are completely private to your team members."
                   : currentChannel.scope === "dm"
                   ? "Messages sent here are strictly confidential between you two."
+                  : currentChannel.id === "announcements"
+                  ? "Broadcast channel for official organizer announcements."
                   : "Messages sent here are broadcast to all participants."}
               </p>
             </div>
           )}
         </div>
 
-        {/* Message Input Box */}
-        <form onSubmit={handleSendMessage} className="p-3 md:p-4 border-t border-zinc-200 bg-white flex items-center gap-2 shrink-0">
-          
-          <Button type="button" variant="ghost" size="icon" className="h-9 w-9 text-zinc-500 hover:text-zinc-900 shrink-0">
-            <Smile className="w-5 h-5" />
-          </Button>
+        {/* Message Input Box or Announcements Notice */}
+        {isAnnouncementsChannel ? (
+          <div className="p-3.5 md:p-4 border-t border-zinc-200 bg-amber-50/50 flex items-center justify-center gap-2 text-xs text-amber-900 font-medium shrink-0">
+            <Lock className="w-4 h-4 text-[#E61E32] shrink-0" />
+            <span>Only Hackathon Organizers can broadcast announcements in <strong>#announcements</strong>.</span>
+          </div>
+        ) : (
+          <form onSubmit={handleSendMessage} className="p-3 md:p-4 border-t border-zinc-200 bg-white flex items-center gap-2 shrink-0">
+            
+            <Button type="button" variant="ghost" size="icon" className="h-9 w-9 text-zinc-500 hover:text-zinc-900 shrink-0">
+              <Smile className="w-5 h-5" />
+            </Button>
 
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button type="button" variant="ghost" size="icon" className="h-9 w-9 text-zinc-500 hover:text-zinc-900 shrink-0">
-                <Paperclip className="w-4 h-4" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="start" className="w-48">
-              <DropdownMenuItem className="text-xs cursor-pointer">
-                <Image className="w-4 h-4 mr-2" /> Photos & Videos
-              </DropdownMenuItem>
-              <DropdownMenuItem className="text-xs cursor-pointer">
-                <Camera className="w-4 h-4 mr-2" /> Camera
-              </DropdownMenuItem>
-              <DropdownMenuItem className="text-xs cursor-pointer">
-                <File className="w-4 h-4 mr-2" /> Document
-              </DropdownMenuItem>
-              <DropdownMenuItem className="text-xs cursor-pointer">
-                <UserRound className="w-4 h-4 mr-2" /> Contact
-              </DropdownMenuItem>
-              <DropdownMenuItem className="text-xs cursor-pointer">
-                <ChartBarIncreasing className="w-4 h-4 mr-2" /> Poll
-              </DropdownMenuItem>
-              <DropdownMenuItem className="text-xs cursor-pointer">
-                <Brush className="w-4 h-4 mr-2" /> Drawing
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button type="button" variant="ghost" size="icon" className="h-9 w-9 text-zinc-500 hover:text-zinc-900 shrink-0">
+                  <Paperclip className="w-4 h-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="start" className="w-48">
+                <DropdownMenuItem className="text-xs cursor-pointer">
+                  <Image className="w-4 h-4 mr-2" /> Photos & Videos
+                </DropdownMenuItem>
+                <DropdownMenuItem className="text-xs cursor-pointer">
+                  <Camera className="w-4 h-4 mr-2" /> Camera
+                </DropdownMenuItem>
+                <DropdownMenuItem className="text-xs cursor-pointer">
+                  <File className="w-4 h-4 mr-2" /> Document
+                </DropdownMenuItem>
+                <DropdownMenuItem className="text-xs cursor-pointer">
+                  <UserRound className="w-4 h-4 mr-2" /> Contact
+                </DropdownMenuItem>
+                <DropdownMenuItem className="text-xs cursor-pointer">
+                  <ChartBarIncreasing className="w-4 h-4 mr-2" /> Poll
+                </DropdownMenuItem>
+                <DropdownMenuItem className="text-xs cursor-pointer">
+                  <Brush className="w-4 h-4 mr-2" /> Drawing
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
 
-          <Input
-            type="text"
-            value={inputText}
-            onChange={(e) => setInputText(e.target.value)}
-            placeholder={
-              currentChannel.scope === "squad"
-                ? "Message your squad (Private)..."
-                : currentChannel.scope === "dm"
-                ? `Direct message ${currentChannel.name}...`
-                : `Post to #${currentChannel.name}...`
-            }
-            className="flex-1 h-10 text-xs bg-zinc-50 border-zinc-200 focus-visible:bg-white rounded-lg shadow-2xs"
-          />
+            <Input
+              type="text"
+              value={inputText}
+              onChange={(e) => setInputText(e.target.value)}
+              placeholder={
+                currentChannel.scope === "squad"
+                  ? "Message your squad (Private)..."
+                  : currentChannel.scope === "dm"
+                  ? `Direct message ${currentChannel.name}...`
+                  : `Post to #${currentChannel.name}...`
+              }
+              className="flex-1 h-10 text-xs bg-zinc-50 border-zinc-200 focus-visible:bg-white rounded-lg shadow-2xs"
+            />
 
-          <Button
-            type="submit"
-            disabled={isSending || !inputText.trim()}
-            className="h-10 px-4 bg-[#E61E32] hover:bg-[#c91527] text-white text-xs font-semibold rounded-lg shrink-0 gap-1.5 shadow-sm"
-          >
-            {isSending ? (
-              <Loader2 className="w-4 h-4 animate-spin" />
-            ) : (
-              <>
-                <span>Send</span>
-                <Send className="w-3.5 h-3.5" />
-              </>
-            )}
-          </Button>
-        </form>
+            <Button
+              type="submit"
+              disabled={isSending || !inputText.trim()}
+              className="h-10 px-4 bg-[#E61E32] hover:bg-[#c91527] text-white text-xs font-semibold rounded-lg shrink-0 gap-1.5 shadow-sm"
+            >
+              {isSending ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : (
+                <>
+                  <span>Send</span>
+                  <Send className="w-3.5 h-3.5" />
+                </>
+              )}
+            </Button>
+          </form>
+        )}
 
       </section>
 
