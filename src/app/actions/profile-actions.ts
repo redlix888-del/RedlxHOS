@@ -41,6 +41,9 @@ export async function updateProfileAction(prevState: any, formData: FormData) {
     };
 
     if (currentPassword && newPassword) {
+      if (!currentOrganizer.passwordHash) {
+        return { success: false, error: "Google authenticated accounts cannot change password here." };
+      }
       const isPasswordValid = verifyPassword(currentPassword, currentOrganizer.passwordHash);
       if (!isPasswordValid) {
         return { success: false, error: "Incorrect current password." };

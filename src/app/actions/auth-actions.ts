@@ -84,6 +84,10 @@ export async function signInAction(prevState: any, formData: FormData) {
       return { success: false, error: "Invalid email or password." };
     }
 
+    if (!organizer.passwordHash) {
+      return { success: false, error: "This account was created with Google Sign-In. Please sign in with Google." };
+    }
+
     const isValid = verifyPassword(password, organizer.passwordHash);
     if (!isValid) {
       return { success: false, error: "Invalid email or password." };

@@ -754,12 +754,10 @@ export default function TeamMessagesPage() {
                         {seen ? (
                           <CheckCheck
                             className={`w-3.5 h-3.5 shrink-0 ${isSquadChat ? "text-[#E61E32]" : "text-white"}`}
-                            title="Seen / Read"
                           />
                         ) : (
                           <CheckCheck
                             className={`w-3.5 h-3.5 shrink-0 ${isSquadChat ? "text-zinc-400" : "text-white/50"}`}
-                            title="Sent & Delivered (Not seen yet)"
                           />
                         )}
                       </div>

@@ -118,10 +118,12 @@ export async function teamSignInAction(prevState: any, formData: FormData) {
       if (hackathonId && team.hackathonId !== hackathonId) {
         return { success: false, error: "Credentials not registered for this hackathon." };
       }
-      const isValid = verifyPassword(password, team.passwordHash);
-      if (isValid) {
-        await setTeamSessionCookie(team.id);
-        redirect("/team/dashboard");
+      if (team.passwordHash) {
+        const isValid = verifyPassword(password, team.passwordHash);
+        if (isValid) {
+          await setTeamSessionCookie(team.id);
+          redirect("/team/dashboard");
+        }
       }
     }
 
@@ -137,10 +139,12 @@ export async function teamSignInAction(prevState: any, formData: FormData) {
       if (hackathonId && member.team.hackathonId !== hackathonId) {
         return { success: false, error: "Credentials not registered for this hackathon." };
       }
-      const isValid = verifyPassword(password, member.passwordHash);
-      if (isValid) {
-        await setTeamSessionCookie(member.id);
-        redirect("/team/dashboard");
+      if (member.passwordHash) {
+        const isValid = verifyPassword(password, member.passwordHash);
+        if (isValid) {
+          await setTeamSessionCookie(member.id);
+          redirect("/team/dashboard");
+        }
       }
     }
 
