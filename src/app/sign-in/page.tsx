@@ -146,9 +146,6 @@ export default function SignInPage() {
                 <Link href="/sign-up" className="hover:text-zinc-900 underline underline-offset-2">
                   Don&apos;t have an account? Sign up
                 </Link>
-                <Link href="/team/login" className="text-[#E61E32] font-semibold hover:underline">
-                  Team Login
-                </Link>
               </div>
 
               <button
