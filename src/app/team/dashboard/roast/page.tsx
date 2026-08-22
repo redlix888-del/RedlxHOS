@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { Flame, Terminal, Play, AlertTriangle, ShieldAlert, Sparkles, RefreshCw, Loader2, CheckSquare } from "lucide-react";
-import { fetchProjectSubmissionAction, saveRoastAction, fetchRoastsAction } from "../../../actions/team-feature-actions";
+import { fetchProjectSubmissionAction, saveRoastAction, fetchRoastsAction, analyzeRealtimeWebsiteAction } from "../../../actions/team-feature-actions";
 
 interface RoastLog {
   type: "info" | "warning" | "burn" | "success";
@@ -62,7 +62,7 @@ export default function TeamRoastPage() {
     loadData();
   }, []);
 
-  const handleStartRoast = (e: React.FormEvent) => {
+  const handleStartRoast = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!siteUrl.trim()) return;
 
@@ -70,107 +70,56 @@ export default function TeamRoastPage() {
     setRoastDone(false);
     setLogs([]);
 
-    // Generate dynamic logs based on project properties
-    const dynamicLogs: RoastLog[] = [
-      { type: "info", text: `[AUDIT] Running static review for target: ${siteUrl}` },
-      { type: "info", text: `[INFO] Detected project name: "${projectName || "Untitled Hack"}"` },
-    ];
+    try {
+      // Execute real-time server-side HTTP probe and HTML audit
+      const auditResult = await analyzeRealtimeWebsiteAction(siteUrl);
 
-    if (!projectName) {
-      dynamicLogs.push({
-        type: "warning",
-        text: "[WARNING] Project Name is blank in database. That makes it hard for users (and judges) to remember you.",
-      });
-    }
+      const dynamicLogs = auditResult.logs;
+      const calculatedBurn = auditResult.burnLevel;
+      const calculatedVerdict = auditResult.verdict;
 
-    if (!projectDescription || projectDescription.length < 20) {
-      dynamicLogs.push({
-        type: "burn",
-        text: "[CRITIQUE] Your project description is shorter than a tweet. Did you give up writing it midway?",
-      });
-    } else {
-      dynamicLogs.push({
-        type: "info",
-        text: `[AUDIT] Auditing description: "${projectDescription.substring(0, 60)}..."`,
-      });
-      if (projectDescription.toLowerCase().includes("ai") || projectDescription.toLowerCase().includes("wrapper")) {
-        dynamicLogs.push({
-          type: "burn",
-          text: "[CRITIQUE] Found 'AI' in description. Is this a real product, or is it another GPT API wrapper with a custom CSS theme?",
-        });
-      }
-    }
-
-    // Dynamic checks on URL
-    if (siteUrl.includes("vercel.app") || siteUrl.includes("netlify.app")) {
-      dynamicLogs.push({
-        type: "info",
-        text: "[HOSTING] Site is hosted on a free-tier hosting platform. Classic hackathon deployment.",
-      });
-    } else {
-      dynamicLogs.push({
-        type: "info",
-        text: "[HOSTING] Target site utilizes a custom domain name. Staging server seems professional.",
-      });
-    }
-
-    // Standard technical burns
-    dynamicLogs.push(
-      { type: "info", text: "[AUDIT] Analyzing Prisma schemas and DB indexes..." },
-      { type: "warning", text: "[WARNING] Found 12 relational database tables with zero manual index keys." },
-      { type: "burn", text: "[PERF] Enjoy that 5-second database response delay. Your search inputs will load slower than dial-up internet." },
-      { type: "info", text: "[DESIGN] Auditing design systems & theme tokens..." },
-      { type: "burn", text: "[DESIGN] That palette uses generic red/blue elements. It is screaming at users instead of offering high-fidelity feedback." }
-    );
-
-    const calculatedBurn = projectName ? "Scorch (Spicy)" : "Inferno (Extra Spicy)";
-    const calculatedVerdict = projectName 
-      ? "Prisma schemas need indexes, design needs custom palettes. 6/10." 
-      : "No project title, barebones description, database queries will crawl. 3/10.";
-
-    dynamicLogs.push({
-      type: "success",
-      text: `[COMPLETE] Audit finished. Overall Verdict: ${calculatedVerdict}`,
-    });
-
-    let currentLogIndex = 0;
-    const interval = setInterval(async () => {
-      if (currentLogIndex < dynamicLogs.length) {
-        const logToAppend = dynamicLogs[currentLogIndex];
-        setLogs((prev) => [...prev, logToAppend]);
-        currentLogIndex++;
-      } else {
-        clearInterval(interval);
-        
-        try {
-          // Save roast to PostgreSQL database
-          const saved = await saveRoastAction(
-            siteUrl,
-            calculatedBurn,
-            JSON.stringify(dynamicLogs),
-            calculatedVerdict
-          );
+      let currentLogIndex = 0;
+      const interval = setInterval(async () => {
+        if (currentLogIndex < dynamicLogs.length) {
+          const logToAppend = dynamicLogs[currentLogIndex];
+          setLogs((prev) => [...prev, logToAppend]);
+          currentLogIndex++;
+        } else {
+          clearInterval(interval);
           
-          setHistory((prev) => [
-            {
-              id: saved.id,
-              liveUrl: saved.liveUrl,
-              verdict: saved.verdict,
-              burnLevel: saved.burnLevel,
-              createdAt: new Date(saved.createdAt),
-            },
-            ...prev,
-          ]);
-        } catch (err) {
-          console.error("Failed to save roast:", err);
-        }
+          try {
+            // Save roast to PostgreSQL database
+            const saved = await saveRoastAction(
+              siteUrl,
+              calculatedBurn,
+              JSON.stringify(dynamicLogs),
+              calculatedVerdict
+            );
+            
+            setHistory((prev) => [
+              {
+                id: saved.id,
+                liveUrl: saved.liveUrl,
+                verdict: saved.verdict,
+                burnLevel: saved.burnLevel,
+                createdAt: new Date(saved.createdAt),
+              },
+              ...prev,
+            ]);
+          } catch (err) {
+            console.error("Failed to save roast:", err);
+          }
 
-        setBurnLevel(calculatedBurn);
-        setVerdict(calculatedVerdict);
-        setIsRoasting(false);
-        setRoastDone(true);
-      }
-    }, 400);
+          setBurnLevel(calculatedBurn);
+          setVerdict(calculatedVerdict);
+          setIsRoasting(false);
+          setRoastDone(true);
+        }
+      }, 350);
+    } catch (err) {
+      console.error("Error executing real-time website roast:", err);
+      setIsRoasting(false);
+    }
   };
 
   if (isLoading) {

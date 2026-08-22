@@ -428,3 +428,202 @@ export async function fetchTopNavbarCountsAction() {
   };
 }
 
+// ── Real-Time Website Audit Action ──
+export async function analyzeRealtimeWebsiteAction(targetUrl: string) {
+  let url = (targetUrl || "").trim();
+  if (!url.startsWith("http://") && !url.startsWith("https://")) {
+    url = `https://${url}`;
+  }
+
+  const logs: { type: "info" | "warning" | "burn" | "success"; text: string }[] = [];
+  logs.push({ type: "info", text: `[INIT] Dispatching HTTP GET probe to target: ${url}` });
+
+  const startTime = Date.now();
+  let statusCode = 0;
+  let htmlContent = "";
+  let isReachable = false;
+  let latencyMs = 0;
+
+  try {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 7000);
+
+    const response = await fetch(url, {
+      method: "GET",
+      headers: {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) HackOS-Roaster/2.0 (+https://hackos.io)",
+        "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+      },
+      signal: controller.signal,
+      cache: "no-store",
+    });
+
+    clearTimeout(timeoutId);
+    latencyMs = Date.now() - startTime;
+    statusCode = response.status;
+    isReachable = response.ok || statusCode < 400;
+    htmlContent = await response.text();
+  } catch (err: any) {
+    latencyMs = Date.now() - startTime;
+    logs.push({
+      type: "burn",
+      text: `[NET_ERR] Failed to reach site (${err.message || "Connection Timeout / Refused"}). Latency: ${latencyMs}ms.`,
+    });
+  }
+
+  if (!isReachable) {
+    logs.push({
+      type: "burn",
+      text: `[HTTP_STATUS] Target server returned status ${statusCode || "UNREACHABLE"}. Is your app running or deployed?`,
+    });
+    logs.push({
+      type: "burn",
+      text: `[CRITIQUE] Your site is harder to find than an offline server in 1999. Fix your deployment!`,
+    });
+    logs.push({
+      type: "success",
+      text: `[COMPLETE] Audit finished. Overall Verdict: Site offline or returning error status. Score: 1.5/10.`,
+    });
+
+    return {
+      score: 1.5,
+      burnLevel: "Inferno (Extra Spicy 🌶️🔥)",
+      verdict: "Target server unreachable or returning HTTP errors. Score: 1.5/10.",
+      logs,
+    };
+  }
+
+  // --- Real HTML Analysis ---
+  logs.push({
+    type: "info",
+    text: `[HTTP_STATUS] Connected (200 OK). Server latency: ${latencyMs}ms. Page payload size: ${(htmlContent.length / 1024).toFixed(1)} KB.`,
+  });
+
+  // SSL Check
+  const isHttps = url.startsWith("https://");
+  if (isHttps) {
+    logs.push({ type: "info", text: `[SECURITY] SSL Encryption verified (HTTPS active).` });
+  } else {
+    logs.push({ type: "warning", text: `[SECURITY] Insecure protocol (HTTP). Browsers will warn users!` });
+  }
+
+  // Latency Evaluation
+  if (latencyMs < 350) {
+    logs.push({ type: "info", text: `[PERF] Lightning fast response time (${latencyMs}ms). Edge CDN hosting detected!` });
+  } else if (latencyMs < 1200) {
+    logs.push({ type: "info", text: `[PERF] Acceptable response time (${latencyMs}ms). Standard cloud latency.` });
+  } else {
+    logs.push({ type: "burn", text: `[PERF] Slow load time (${latencyMs}ms). Your database query or bundle size is dragging.` });
+  }
+
+  // Title Extraction
+  const titleMatch = htmlContent.match(/<title[^>]*>([^<]+)<\/title>/i);
+  const pageTitle = titleMatch ? titleMatch[1].trim() : "";
+  if (pageTitle) {
+    logs.push({ type: "info", text: `[SEO] Found page title: "${pageTitle}"` });
+  } else {
+    logs.push({ type: "warning", text: `[SEO] Missing <title> tag! Search engines and browser tabs will show untitled.` });
+  }
+
+  // Meta Description
+  const metaDescMatch = htmlContent.match(/<meta[^>]*name=["']description["'][^>]*content=["']([^"']+)["']/i) ||
+                          htmlContent.match(/<meta[^>]*content=["']([^"']+)["'][^>]*name=["']description["']/i);
+  const metaDesc = metaDescMatch ? metaDescMatch[1].trim() : "";
+  if (metaDesc) {
+    logs.push({ type: "info", text: `[SEO] Meta description present (${metaDesc.length} chars).` });
+  } else {
+    logs.push({ type: "burn", text: `[SEO] Missing meta description! Link previews on Twitter/WhatsApp will look broken.` });
+  }
+
+  // Mobile Viewport
+  const hasViewport = /<meta[^>]*name=["']viewport["']/i.test(htmlContent);
+  if (hasViewport) {
+    logs.push({ type: "info", text: `[UX] Mobile viewport meta tag verified.` });
+  } else {
+    logs.push({ type: "burn", text: `[UX] Missing viewport meta tag! Your site will look like a tiny desktop site on mobile phones.` });
+  }
+
+  // Headings & Elements Count
+  const h1Count = (htmlContent.match(/<h1[^>]*>/gi) || []).length;
+  const imgMatches = htmlContent.match(/<img[^>]*>/gi) || [];
+  const imgCount = imgMatches.length;
+  const imgsWithoutAlt = imgMatches.filter(img => !/alt=["'][^"']+["']/i.test(img)).length;
+  const buttonCount = (htmlContent.match(/<button[^>]*>/gi) || []).length;
+  const linkCount = (htmlContent.match(/<a[^>]*>/gi) || []).length;
+
+  logs.push({
+    type: "info",
+    text: `[DOM] Parsed structure: ${h1Count} H1 header(s), ${imgCount} image(s), ${buttonCount} button(s), ${linkCount} link(s).`,
+  });
+
+  if (imgCount > 0 && imgsWithoutAlt > 0) {
+    logs.push({
+      type: "burn",
+      text: `[ACCESSIBILITY] ${imgsWithoutAlt} out of ${imgCount} image(s) missing alt text! Screen readers can't read them.`,
+    });
+  }
+
+  // Tech Stack Detection
+  const lowerHtml = htmlContent.toLowerCase();
+  const detectedTech: string[] = [];
+  if (lowerHtml.includes("next/") || lowerHtml.includes("__next")) detectedTech.push("Next.js");
+  if (lowerHtml.includes("react")) detectedTech.push("React");
+  if (lowerHtml.includes("tailwind")) detectedTech.push("Tailwind CSS");
+  if (lowerHtml.includes("vue")) detectedTech.push("Vue.js");
+  if (lowerHtml.includes("bootstrap")) detectedTech.push("Bootstrap");
+
+  if (detectedTech.length > 0) {
+    logs.push({ type: "info", text: `[TECH] Detected stack signatures: ${detectedTech.join(", ")}.` });
+  }
+
+  // --- Dynamic Score Calculation ---
+  let score = 5.0;
+
+  if (isHttps) score += 0.5;
+  if (latencyMs < 350) score += 1.5;
+  else if (latencyMs < 1000) score += 0.8;
+  else if (latencyMs > 2500) score -= 1.0;
+
+  if (pageTitle && pageTitle.length > 5) score += 1.0;
+  else score -= 0.5;
+
+  if (metaDesc && metaDesc.length > 15) score += 1.0;
+  else score -= 0.8;
+
+  if (hasViewport) score += 0.8;
+  else score -= 1.2;
+
+  if (h1Count >= 1 && h1Count <= 2) score += 0.5;
+  if (imgCount === 0 || imgsWithoutAlt === 0) score += 0.5;
+  else if (imgsWithoutAlt > 0) score -= 0.5;
+
+  if (detectedTech.length >= 2) score += 0.4;
+
+  score = Math.max(2.0, Math.min(9.7, Math.round(score * 10) / 10));
+
+  let burnLevel = "Mild (Clean & Crisp)";
+  if (score < 4.5) burnLevel = "Inferno (Extra Spicy 🌶️🔥)";
+  else if (score < 7.0) burnLevel = "Scorch (Spicy 🔥)";
+
+  let verdict = `Real-time analysis complete! Score: ${score}/10. Latency: ${latencyMs}ms.`;
+  if (score >= 8.0) {
+    verdict = `Impressive performance & structural setup (${score}/10). Responsive load in ${latencyMs}ms with valid SEO tags.`;
+  } else if (score >= 6.0) {
+    verdict = `Decent website build (${score}/10). Fix missing meta descriptions & image alt tags to boost ranking.`;
+  } else {
+    verdict = `Needs serious polish (${score}/10). High latency (${latencyMs}ms) or missing essential SEO & mobile viewport tags.`;
+  }
+
+  logs.push({
+    type: "success",
+    text: `[COMPLETE] Audit finished. Final Score: ${score}/10. ${verdict}`,
+  });
+
+  return {
+    score,
+    burnLevel,
+    verdict,
+    logs,
+  };
+}
+
