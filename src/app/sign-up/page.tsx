@@ -158,7 +158,7 @@ export default function SignUpPage() {
                     value={formData.organizerKey}
                     onChange={handleChange}
                     error={errors.organizerKey}
-                    placeholder="Enter secret key (e.g. SNIST@VTAI2026)"
+                    placeholder="Enter secret key provided by host"
                   />
 
                   <FieldBox
