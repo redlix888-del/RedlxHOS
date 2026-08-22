@@ -38,6 +38,7 @@ interface HackathonConsoleManagerProps {
     ticketingLink: string | null;
     locationLink: string | null;
     registrations: any[];
+    teams?: any[];
     prizes: Prize[];
     faqs: FAQ[];
     scheduleItems: ScheduleItem[];
@@ -220,7 +221,9 @@ export default function HackathonConsoleManager({ hackathon }: HackathonConsoleM
                   </svg>
                   <div>
                     <p className="text-[9px] uppercase tracking-wider text-zinc-400">Registrations</p>
-                    <p className="text-zinc-800 font-bold">{hackathon.registrations.length} Developers</p>
+                    <p className="text-zinc-800 font-bold">
+                      {((hackathon.teams || []).reduce((acc: number, t: any) => acc + 1 + (t.members?.length || 0), 0) + hackathon.registrations.length)} Developers
+                    </p>
                   </div>
                 </div>
               </div>

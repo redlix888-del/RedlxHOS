@@ -18,7 +18,11 @@ export default async function MyHackathonsPage() {
     },
     include: {
       registrations: true,
-      teams: true,
+      teams: {
+        include: {
+          members: true,
+        },
+      },
     },
     orderBy: {
       createdAt: "desc",
@@ -175,7 +179,9 @@ export default async function MyHackathonsPage() {
                     <div className="h-6 w-[1px] bg-zinc-200" />
                     <div className="text-right">
                       <span className="uppercase tracking-wider">Total Users</span>
-                      <span className="block text-sm font-extrabold text-zinc-800 tabular-nums">{hackathon.registrations.length}</span>
+                      <span className="block text-sm font-extrabold text-zinc-800 tabular-nums">
+                        {hackathon.teams.reduce((acc, t) => acc + 1 + (t.members?.length || 0), 0) + hackathon.registrations.length}
+                      </span>
                     </div>
                   </div>
 

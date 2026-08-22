@@ -24,6 +24,11 @@ export default async function PublicHackathonDetailPage({ params }: PublicDetail
       scheduleItems: true,
       registrations: true,
       ticketTiers: true,
+      teams: {
+        include: {
+          members: true,
+        },
+      },
     },
   });
 
@@ -226,7 +231,9 @@ export default async function PublicHackathonDetailPage({ params }: PublicDetail
                 <Users className="w-5 h-5 text-zinc-400 shrink-0 mt-0.5" strokeWidth={2} />
                 <div>
                   <p className="text-[9px] uppercase tracking-wider font-bold text-zinc-400">Registrations</p>
-                  <p className="text-xs text-zinc-800 font-bold mt-0.5">{hackathon.registrations.length} Competitors</p>
+                  <p className="text-xs text-zinc-800 font-bold mt-0.5">
+                    {(hackathon.teams.reduce((acc, t) => acc + 1 + (t.members?.length || 0), 0) + hackathon.registrations.length)} Competitors
+                  </p>
                 </div>
               </div>
             </div>
