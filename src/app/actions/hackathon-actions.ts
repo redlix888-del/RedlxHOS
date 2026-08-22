@@ -95,33 +95,6 @@ export async function createHackathonAction(prevState: any, formData: FormData) 
       },
     });
 
-    if (status === "Active") {
-      const mockParticipants = [
-        { fullName: "Alex Rivera", email: `alex.rivera.${Date.now()}@example.com`, phone: "+1 555-0199" },
-        { fullName: "Samantha Chen", email: `sam.chen.${Date.now()}@example.com`, phone: "+1 555-0142" },
-        { fullName: "Marcus Johnson", email: `marcus.j.${Date.now()}@example.com`, phone: null },
-      ];
-
-      for (const mock of mockParticipants) {
-        const participant = await prisma.participant.upsert({
-          where: { email: mock.email },
-          update: {},
-          create: {
-            fullName: mock.fullName,
-            email: mock.email,
-            phone: mock.phone,
-          },
-        });
-
-        await prisma.registration.create({
-          data: {
-            hackathonId: hackathon.id,
-            participantId: participant.id,
-          },
-        });
-      }
-    }
-
   } catch (err: any) {
     console.error("CreateHackathon error:", err);
     return { success: false, error: "Failed to create hackathon. Please try again." };
