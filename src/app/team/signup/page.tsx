@@ -11,20 +11,22 @@ interface PageProps {
 export default async function TeamSignUpPage({ searchParams }: PageProps) {
   const { hackathonId } = await searchParams;
 
-  if (!hackathonId) {
-    redirect("/active-hacks");
+  let hackathon = null;
+
+  if (hackathonId) {
+    hackathon = await prisma.hackathon.findUnique({
+      where: { id: hackathonId },
+      select: { id: true, title: true },
+    });
   }
 
-  // Fetch the specific hackathon details
-  const hackathon = await prisma.hackathon.findUnique({
-    where: {
-      id: hackathonId,
-    },
-    select: {
-      id: true,
-      title: true,
-    },
-  });
+  // Fallback to latest active hackathon if no ID was specified in URL
+  if (!hackathon) {
+    hackathon = await prisma.hackathon.findFirst({
+      orderBy: { createdAt: "desc" },
+      select: { id: true, title: true },
+    });
+  }
 
   if (!hackathon) {
     redirect("/active-hacks");
