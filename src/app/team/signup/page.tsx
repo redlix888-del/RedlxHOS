@@ -1,6 +1,7 @@
 import { prisma } from "../../../lib/db";
 import TeamSignUpForm from "./TeamSignUpForm";
 import { redirect } from "next/navigation";
+import { getSessionTeam } from "../../../lib/auth";
 
 interface PageProps {
   searchParams: Promise<{
@@ -9,6 +10,12 @@ interface PageProps {
 }
 
 export default async function TeamSignUpPage({ searchParams }: PageProps) {
+  // If already logged in as a team, redirect to dashboard
+  const session = await getSessionTeam();
+  if (session) {
+    redirect("/team/dashboard");
+  }
+
   const { hackathonId } = await searchParams;
 
   let hackathon = null;
