@@ -4,7 +4,7 @@ import { useState, useActionState, startTransition } from "react";
 import Link from "next/link";
 import { teamSignUpAction } from "../../actions/team-auth-actions";
 import { GrainGradient } from "@paper-design/shaders-react";
-import { FieldBox, SocialButton, GoogleIcon, AppleIcon } from "@/components/ui/auth-section-1";
+import { FieldBox } from "@/components/ui/auth-section-1";
 import { Loader2, ArrowLeft } from "lucide-react";
 
 interface HackathonInfo {
@@ -94,14 +94,7 @@ export default function TeamSignUpForm({ hackathon }: TeamSignUpFormProps) {
               </p>
             </div>
 
-            {/* Social Buttons */}
-            <div className="mt-4">
-              <SocialButton icon={<GoogleIcon />} label="Continue with Google" href="/api/team/auth/google" />
-            </div>
 
-            <div className="my-4 text-center text-xs font-medium uppercase tracking-wider text-zinc-400">
-              or register with team credentials
-            </div>
 
             {/* Error banner */}
             {state?.error && (

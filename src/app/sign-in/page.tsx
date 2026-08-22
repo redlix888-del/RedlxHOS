@@ -5,13 +5,12 @@ import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { signInAction } from "../actions/auth-actions";
 import { GrainGradient } from "@paper-design/shaders-react";
-import { FieldBox, SocialButton, GoogleIcon } from "@/components/ui/auth-section-1";
+import { FieldBox } from "@/components/ui/auth-section-1";
 import { Loader2, ArrowLeft } from "lucide-react";
 
 function SignInContent() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [organizerKey, setOrganizerKey] = useState("");
   const [emailError, setEmailError] = useState("");
   const [passwordError, setPasswordError] = useState("");
 
@@ -78,35 +77,6 @@ function SignInContent() {
               <p className="mt-2 text-sm sm:text-base text-zinc-500 font-normal">
                 Manage your active hackathons, judges, and submissions
               </p>
-            </div>
-
-            {/* Organizer Secret Key Input for OAuth */}
-            <div className="mt-5">
-              <FieldBox
-                label="Organizer Secret Access Key (Required for Google Auth)"
-                name="organizerKey"
-                type="password"
-                value={organizerKey}
-                onChange={(e) => setOrganizerKey(e.target.value)}
-                placeholder="Enter secret key provided by host"
-              />
-            </div>
-
-            {/* Social Buttons */}
-            <div className="mt-4">
-              <SocialButton
-                icon={<GoogleIcon />}
-                label="Continue with Google"
-                href={
-                  organizerKey
-                    ? `/api/auth/google?role=organizer&key=${encodeURIComponent(organizerKey)}`
-                    : `/api/auth/google?role=organizer`
-                }
-              />
-            </div>
-
-            <div className="my-5 text-center text-xs font-medium uppercase tracking-wider text-zinc-400">
-              or sign in with email
             </div>
 
             {/* Error banner */}
