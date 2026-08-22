@@ -70,9 +70,15 @@ export async function signUpAction(prevState: any, formData: FormData) {
 export async function signInAction(prevState: any, formData: FormData) {
   const email = (formData.get("email") as string || "").trim().toLowerCase();
   const password = formData.get("password") as string || "";
+  const organizerKey = (formData.get("organizerKey") as string || "").trim();
+  const secretKey = process.env.ORGANIZER_SECRET_KEY || "SNIST@VTAI2026";
 
-  if (!email || !password) {
-    return { success: false, error: "Please enter your email and password." };
+  if (!email || !password || !organizerKey) {
+    return { success: false, error: "Please enter email, password, and Organizer Secret Key." };
+  }
+
+  if (organizerKey !== secretKey) {
+    return { success: false, error: "Invalid Organizer Secret Access Key." };
   }
 
   try {
@@ -85,7 +91,7 @@ export async function signInAction(prevState: any, formData: FormData) {
     }
 
     if (!organizer.passwordHash) {
-      return { success: false, error: "This account was created with Google Sign-In. Please sign in with Google." };
+      return { success: false, error: "This account was created via Google previously. Please register your account with a password." };
     }
 
     const isValid = verifyPassword(password, organizer.passwordHash);

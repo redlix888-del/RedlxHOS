@@ -11,8 +11,10 @@ import { Loader2, ArrowLeft } from "lucide-react";
 function SignInContent() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [organizerKey, setOrganizerKey] = useState("");
   const [emailError, setEmailError] = useState("");
   const [passwordError, setPasswordError] = useState("");
+  const [organizerKeyError, setOrganizerKeyError] = useState("");
 
   const searchParams = useSearchParams();
   const urlError = searchParams.get("error");
@@ -30,6 +32,13 @@ function SignInContent() {
   const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     let valid = true;
+
+    if (!organizerKey.trim()) {
+      setOrganizerKeyError("Organizer Secret Access Key is required.");
+      valid = false;
+    } else {
+      setOrganizerKeyError("");
+    }
 
     if (!validateEmail(email)) {
       setEmailError("Please enter a valid work email address.");
@@ -88,6 +97,19 @@ function SignInContent() {
 
             {/* Form */}
             <form onSubmit={handleSubmit} className="space-y-3.5" noValidate>
+              <FieldBox
+                label="Organizer Secret Access Key"
+                name="organizerKey"
+                type="password"
+                value={organizerKey}
+                onChange={(e) => {
+                  setOrganizerKey(e.target.value);
+                  if (organizerKeyError) setOrganizerKeyError("");
+                }}
+                error={organizerKeyError}
+                placeholder="Enter secret key provided by host"
+              />
+
               <FieldBox
                 label="Work Email Address"
                 name="email"
