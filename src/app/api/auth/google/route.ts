@@ -22,7 +22,7 @@ export async function GET(request: Request) {
   const role = searchParams.get("role") || "organizer";
   const key = (searchParams.get("key") || "").trim();
 
-  const secretKey = process.env.ORGANIZER_SECRET_KEY || "SNIST2026";
+  const secretKey = process.env.ORGANIZER_SECRET_KEY || "SNIST@VTAI2026";
 
   if (role === "organizer") {
     if (!key || key !== secretKey) {

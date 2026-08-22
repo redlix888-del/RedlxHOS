@@ -11,6 +11,7 @@ export default function TeamSubNavbar() {
 
   useEffect(() => {
     const loadCounts = async () => {
+      if (typeof document !== "undefined" && document.visibilityState === "hidden") return;
       try {
         const data = await fetchTopNavbarCountsAction();
         setCounts(data);
@@ -20,8 +21,16 @@ export default function TeamSubNavbar() {
     };
     loadCounts();
 
-    const interval = setInterval(loadCounts, 5000);
-    return () => clearInterval(interval);
+    const interval = setInterval(loadCounts, 30000);
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === "visible") loadCounts();
+    };
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+
+    return () => {
+      clearInterval(interval);
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+    };
   }, []);
 
   const links = [

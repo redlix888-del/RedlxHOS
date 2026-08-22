@@ -1,5 +1,6 @@
 import crypto from "crypto";
 import { cookies } from "next/headers";
+import { cache } from "react";
 import { prisma } from "./db";
 
 const AUTH_SECRET = process.env.AUTH_SECRET || process.env.NEXTAUTH_SECRET || "hackos_secure_platform_secret_key_change_in_production_2026";
@@ -103,7 +104,7 @@ export async function getSessionUserId(): Promise<string | null> {
   return verifySessionToken(sessionCookie.value, "organizer");
 }
 
-export async function getSessionUser() {
+export const getSessionUser = cache(async () => {
   const userId = await getSessionUserId();
   if (!userId) return null;
 
@@ -116,7 +117,7 @@ export async function getSessionUser() {
     console.error("Failed to fetch session user:", error);
     return null;
   }
-}
+});
 
 export async function clearSessionCookie() {
   const cookieStore = await cookies();
@@ -145,7 +146,7 @@ export async function getSessionTeamId(): Promise<string | null> {
   return verifySessionToken(sessionCookie.value, "team");
 }
 
-export async function getSessionTeam() {
+export const getSessionTeam = cache(async () => {
   const teamIdOrMemberId = await getSessionTeamId();
   if (!teamIdOrMemberId) return null;
 
@@ -193,7 +194,7 @@ export async function getSessionTeam() {
     console.error("Failed to fetch session team/member:", error);
     return null;
   }
-}
+});
 
 export async function clearTeamSessionCookie() {
   const cookieStore = await cookies();
@@ -222,7 +223,7 @@ export async function getSessionJudgeId(): Promise<string | null> {
   return verifySessionToken(sessionCookie.value, "judge");
 }
 
-export async function getSessionJudge() {
+export const getSessionJudge = cache(async () => {
   const judgeId = await getSessionJudgeId();
   if (!judgeId) return null;
 
@@ -240,7 +241,7 @@ export async function getSessionJudge() {
     console.error("Failed to fetch session judge:", error);
     return null;
   }
-}
+});
 
 export async function clearJudgeSessionCookie() {
   const cookieStore = await cookies();

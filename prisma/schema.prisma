@@ -91,6 +91,8 @@ model Registration {
   paymentStatus  String      @default("Pending")
 
   @@unique([hackathonId, participantId])
+  @@index([hackathonId])
+  @@index([participantId])
 }
 
 model FAQ {
@@ -146,6 +148,8 @@ model Team {
   roasts            ProjectRoast[]
   createdAt         DateTime           @default(now())
   updatedAt         DateTime           @updatedAt
+
+  @@index([hackathonId])
 }
 
 model TeamMember {
@@ -160,6 +164,8 @@ model TeamMember {
   team         Team     @relation(fields: [teamId], references: [id], onDelete: Cascade)
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
+
+  @@index([teamId])
 }
 
 model Task {
@@ -178,6 +184,8 @@ model Task {
   team            Team     @relation(fields: [teamId], references: [id], onDelete: Cascade)
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
+
+  @@index([teamId, status])
 }
 
 model TaskLog {
@@ -186,6 +194,8 @@ model TaskLog {
   teamId    String
   team      Team     @relation(fields: [teamId], references: [id], onDelete: Cascade)
   createdAt DateTime @default(now())
+
+  @@index([teamId, createdAt])
 }
 
 model Announcement {
@@ -196,6 +206,8 @@ model Announcement {
   hackathon   Hackathon @relation(fields: [hackathonId], references: [id], onDelete: Cascade)
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
+
+  @@index([hackathonId, createdAt])
 }
 
 model Judge {
@@ -232,6 +244,8 @@ model ProjectSubmission {
   description String?
   submittedAt DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
+
+  @@index([hackathonId])
 }
 
 model Message {
@@ -250,6 +264,10 @@ model Message {
   hackathonId   String
   hackathon     Hackathon @relation(fields: [hackathonId], references: [id], onDelete: Cascade)
   createdAt     DateTime  @default(now())
+
+  @@index([hackathonId, createdAt])
+  @@index([teamId])
+  @@index([channelId])
 }
 
 model JuryRequest {
@@ -262,6 +280,9 @@ model JuryRequest {
   teamId      String
   team        Team     @relation(fields: [teamId], references: [id], onDelete: Cascade)
   requestedAt DateTime @default(now())
+
+  @@index([teamId, status])
+  @@index([judgeId])
 }
 
 model Idea {

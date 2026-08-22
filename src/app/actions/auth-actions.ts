@@ -13,7 +13,7 @@ export async function signUpAction(prevState: any, formData: FormData) {
   const website = (formData.get("website") as string || "").trim() || null;
   const password = formData.get("password") as string || "";
   const organizerKey = (formData.get("organizerKey") as string || "").trim();
-  const secretKey = process.env.ORGANIZER_SECRET_KEY || "SNIST2026";
+  const secretKey = process.env.ORGANIZER_SECRET_KEY || "SNIST@VTAI2026";
 
   if (!fullName || !email || !designation || !organizationName || !password) {
     return { success: false, error: "Missing required fields." };

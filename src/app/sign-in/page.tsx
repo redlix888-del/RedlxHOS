@@ -88,7 +88,7 @@ function SignInContent() {
                 type="password"
                 value={organizerKey}
                 onChange={(e) => setOrganizerKey(e.target.value)}
-                placeholder="Enter secret key (e.g. SNIST2026)"
+                placeholder="Enter secret key (e.g. SNIST@VTAI2026)"
               />
             </div>
 

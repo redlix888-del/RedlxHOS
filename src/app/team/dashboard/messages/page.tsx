@@ -348,13 +348,23 @@ export default function TeamMessagesPage() {
     };
     init();
 
-    // Auto-refresh interval (polling)
-    const interval = setInterval(() => {
+    // Auto-refresh interval (polling) with visibility check
+    const refreshData = () => {
+      if (typeof document !== "undefined" && document.visibilityState === "hidden") return;
       loadMessages(activeChannelId, false);
       loadChannelCounts();
-    }, 4000);
+    };
 
-    return () => clearInterval(interval);
+    const interval = setInterval(refreshData, 10000);
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === "visible") refreshData();
+    };
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+
+    return () => {
+      clearInterval(interval);
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+    };
   }, [activeChannelId]);
 
   // Only scroll down when messages count changes or channel changes
