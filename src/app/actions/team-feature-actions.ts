@@ -39,25 +39,40 @@ export async function fetchChatContactsAction(): Promise<{ squad: ChatContactIte
     type: "teammate",
   }));
 
-  // 2. Fetch Hackathon Judges / Mentors
+  // 2. Fetch Hackathon Judges & Mentors
   const judges = await prisma.judge.findMany({
     where: { hackathonId: team.hackathonId },
     select: { id: true, name: true, imageUrl: true, description: true },
     orderBy: { name: "asc" },
   });
 
+  const mentors = await prisma.mentor.findMany({
+    where: { hackathonId: team.hackathonId },
+    select: { id: true, name: true, imageUrl: true, description: true, expertise: true },
+    orderBy: { name: "asc" },
+  });
+
   const judgeContacts: ChatContactItem[] = judges.map((j) => ({
     id: j.id,
     name: j.name,
-    role: "Judge / Mentor",
+    role: "Judge",
     email: null,
     avatarUrl: j.imageUrl,
     type: "judge",
   }));
 
+  const mentorContacts: ChatContactItem[] = mentors.map((m) => ({
+    id: m.id,
+    name: m.name,
+    role: m.expertise ? `Mentor (${m.expertise})` : "Mentor",
+    email: null,
+    avatarUrl: m.imageUrl,
+    type: "judge",
+  }));
+
   return {
     squad: [squadLead, ...squadMembers],
-    judges: judgeContacts,
+    judges: [...mentorContacts, ...judgeContacts],
   };
 }
 
