@@ -94,6 +94,15 @@ export default function TeamSignUpForm({ hackathon }: TeamSignUpFormProps) {
               </p>
             </div>
 
+            {/* Social Buttons */}
+            <div className="mt-4">
+              <SocialButton icon={<GoogleIcon />} label="Continue with Google" href="/api/team/auth/google" />
+            </div>
+
+            <div className="my-4 text-center text-xs font-medium uppercase tracking-wider text-zinc-400">
+              or register with team credentials
+            </div>
+
             {/* Error banner */}
             {state?.error && (
               <div className="bg-red-50 text-red-700 text-xs p-3.5 border border-red-200 my-3 font-medium rounded-xl">

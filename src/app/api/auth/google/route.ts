@@ -19,7 +19,7 @@ export async function GET(request: Request) {
   }
 
   const { searchParams } = new URL(request.url);
-  const role = searchParams.get("role") || "organizer";
+  const role = searchParams.get("role") || "team";
   const key = (searchParams.get("key") || "").trim();
 
   const secretKey = process.env.ORGANIZER_SECRET_KEY || "SNIST@VTAI2026";
