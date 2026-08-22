@@ -40,12 +40,25 @@ export async function GET(request: NextRequest) {
     );
   }
 
-  // ── CSRF: Validate state token ────────────────────────────────────────────────
+  // ── CSRF: Validate state token & Mode ──────────────────────────────────────────
   const cookieStore = await cookies();
-  const storedState = cookieStore.get("team_google_oauth_state")?.value;
+  const storedStateRaw = cookieStore.get("team_google_oauth_state")?.value;
   cookieStore.delete("team_google_oauth_state"); // consume immediately
 
-  if (!storedState || storedState !== stateFromGoogle) {
+  let storedToken = storedStateRaw;
+  let mode = "login";
+
+  if (storedStateRaw && storedStateRaw.startsWith("{")) {
+    try {
+      const parsed = JSON.parse(storedStateRaw);
+      storedToken = parsed.token;
+      mode = parsed.mode || "login";
+    } catch (e) {
+      // fallback
+    }
+  }
+
+  if (!storedToken || storedToken !== stateFromGoogle) {
     return NextResponse.redirect(
       `${appUrl}/team/login?error=${encodeURIComponent("Security check failed. Please try again.")}`
     );
@@ -151,19 +164,25 @@ export async function GET(request: NextRequest) {
       return NextResponse.redirect(`${appUrl}/team/dashboard`);
     }
 
-    // 3. No existing account — this Google user is not registered in any team.
-    // Redirect them to join a team using a join code, pre-filling their info via query params.
-    const joinUrl = new URL(`${appUrl}/team/join`);
-    joinUrl.searchParams.set("googleName", googleProfile.name);
-    joinUrl.searchParams.set("googleEmail", googleProfile.email);
-    joinUrl.searchParams.set("googleId", googleProfile.id);
-    joinUrl.searchParams.set("googleAvatar", googleProfile.picture || "");
-    joinUrl.searchParams.set(
-      "info",
-      "Sign in with Google successful! Enter your team invite code to join your team."
-    );
+    // 3. No existing account found for this email.
+    // If the user initiated OAuth from the "Join Team" page, redirect to enter invite code.
+    if (mode === "join") {
+      const joinUrl = new URL(`${appUrl}/team/join`);
+      joinUrl.searchParams.set("googleName", googleProfile.name);
+      joinUrl.searchParams.set("googleEmail", googleProfile.email);
+      joinUrl.searchParams.set("googleId", googleProfile.id);
+      joinUrl.searchParams.set("googleAvatar", googleProfile.picture || "");
+      joinUrl.searchParams.set(
+        "info",
+        "Sign in with Google successful! Enter your team invite code to join your team."
+      );
+      return NextResponse.redirect(joinUrl.toString());
+    }
 
-    return NextResponse.redirect(joinUrl.toString());
+    // If logging in from /team/login and account doesn't exist, return to login with clear error.
+    return NextResponse.redirect(
+      `${appUrl}/team/login?error=${encodeURIComponent("No team account found with this email. Please register your team first.")}`
+    );
   } catch (err: any) {
     console.error("[Team Google OAuth] Error:", err);
     const detail = err?.message ? `: ${err.message}` : "";

@@ -8,7 +8,7 @@ import { cookies } from "next/headers";
  * Stores a CSRF state cookie then redirects to Google's consent screen.
  * The callback will look up / create a TeamMember by Google email.
  */
-export async function GET() {
+export async function GET(request: Request) {
   const clientId = process.env.GOOGLE_CLIENT_ID || process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID;
   const appUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
 
@@ -18,11 +18,19 @@ export async function GET() {
     });
   }
 
+  const { searchParams } = new URL(request.url);
+  const mode = searchParams.get("mode") || "login";
+
   // Generate a CSRF-safe state token
-  const state = crypto.randomBytes(32).toString("hex");
+  const csrfToken = crypto.randomBytes(32).toString("hex");
+
+  const statePayload = JSON.stringify({
+    token: csrfToken,
+    mode,
+  });
 
   const cookieStore = await cookies();
-  cookieStore.set("team_google_oauth_state", state, {
+  cookieStore.set("team_google_oauth_state", statePayload, {
     httpOnly: true,
     secure: process.env.NODE_ENV === "production",
     sameSite: "lax",
@@ -37,7 +45,7 @@ export async function GET() {
     redirect_uri: redirectUri,
     response_type: "code",
     scope: "openid email profile",
-    state,
+    state: csrfToken,
     access_type: "offline",
     prompt: "select_account",
   });
