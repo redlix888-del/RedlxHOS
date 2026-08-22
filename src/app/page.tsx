@@ -33,7 +33,7 @@ export default async function Home() {
       bgColor: "#E61E32",
       textColor: "#ffffff",
       links: [
-        { label: "Developer Sign Up", href: "/team/signup", ariaLabel: "Sign Up for Teams" }
+        { label: "Team Leads Sign Up", href: "/team/signup", ariaLabel: "Sign Up for Teams" }
       ]
     },
     {
