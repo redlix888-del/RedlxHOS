@@ -1,19 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import { prisma } from "@/lib/db";
-import { setSessionCookie } from "@/lib/auth";
+import { setSessionCookie, setTeamSessionCookie } from "@/lib/auth";
 
 /**
  * GET /api/auth/callback/google
- * Handles the redirect back from Google after the user grants consent.
- *
- * Flow:
- *  1. Validate CSRF state
- *  2. Exchange `code` for tokens via Google's token endpoint
- *  3. Fetch the user's profile from Google's userinfo endpoint
- *  4. Upsert Organizer in DB (create on first login, update avatar/name on subsequent logins)
- *  5. Set session cookie (reusing existing auth infrastructure)
- *  6. Redirect to /organizer dashboard
+ * Unified Google OAuth Callback for both Organizer and Team roles.
+ * Reuses the single authorized Google OAuth redirect URI registered in Google Cloud Console.
  */
 export async function GET(request: NextRequest) {
   const { searchParams } = request.nextUrl;
@@ -24,43 +17,68 @@ export async function GET(request: NextRequest) {
   const appUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
   const redirectUri = `${appUrl}/api/auth/callback/google`;
 
+  // ── CSRF: Validate state token & Role Payload ─────────────────────────────────
+  const cookieStore = await cookies();
+  const teamStateRaw = cookieStore.get("team_google_oauth_state")?.value;
+  const organizerStateRaw = cookieStore.get("google_oauth_state")?.value;
+
+  // Clear cookies immediately
+  cookieStore.delete("team_google_oauth_state");
+  cookieStore.delete("google_oauth_state");
+
+  let storedToken: string | null = null;
+  let role = "organizer";
+  let mode = "login";
+  let isVerifiedOrganizer = true;
+
+  if (teamStateRaw) {
+    role = "team";
+    if (teamStateRaw.startsWith("{")) {
+      try {
+        const parsed = JSON.parse(teamStateRaw);
+        storedToken = parsed.token;
+        mode = parsed.mode || "login";
+      } catch (e) {
+        storedToken = teamStateRaw;
+      }
+    } else {
+      storedToken = teamStateRaw;
+    }
+  } else if (organizerStateRaw) {
+    if (organizerStateRaw.startsWith("{")) {
+      try {
+        const parsed = JSON.parse(organizerStateRaw);
+        storedToken = parsed.token;
+        role = parsed.role || "organizer";
+        isVerifiedOrganizer = parsed.verified ?? true;
+        mode = parsed.mode || "login";
+      } catch (e) {
+        storedToken = organizerStateRaw;
+      }
+    } else {
+      storedToken = organizerStateRaw;
+    }
+  }
+
+  const fallbackRedirect = role === "team" ? `${appUrl}/team/login` : `${appUrl}/sign-in`;
+
   // ── Handle user-denied consent ──────────────────────────────────────────────
   if (errorParam) {
     return NextResponse.redirect(
-      `${appUrl}/sign-in?error=${encodeURIComponent("Google sign-in was cancelled.")}`
+      `${fallbackRedirect}?error=${encodeURIComponent("Google sign-in was cancelled.")}`
     );
   }
 
   // ── Validate required params ─────────────────────────────────────────────────
   if (!code || !stateFromGoogle) {
     return NextResponse.redirect(
-      `${appUrl}/sign-in?error=${encodeURIComponent("Invalid OAuth response from Google.")}`
+      `${fallbackRedirect}?error=${encodeURIComponent("Invalid OAuth response from Google.")}`
     );
-  }
-
-  // ── CSRF: Validate state token & Role Payload ─────────────────────────────────
-  const cookieStore = await cookies();
-  const storedStateRaw = cookieStore.get("google_oauth_state")?.value;
-  cookieStore.delete("google_oauth_state"); // consume immediately
-
-  let storedToken = storedStateRaw;
-  let isVerifiedOrganizer = true;
-  let role = "organizer";
-
-  if (storedStateRaw && storedStateRaw.startsWith("{")) {
-    try {
-      const parsed = JSON.parse(storedStateRaw);
-      storedToken = parsed.token;
-      role = parsed.role || "organizer";
-      isVerifiedOrganizer = parsed.verified ?? true;
-    } catch (e) {
-      // fallback
-    }
   }
 
   if (!storedToken || storedToken !== stateFromGoogle) {
     return NextResponse.redirect(
-      `${appUrl}/sign-in?error=${encodeURIComponent("Security check failed. Please try again.")}`
+      `${fallbackRedirect}?error=${encodeURIComponent("Security check failed. Please try again.")}`
     );
   }
 
@@ -76,7 +94,7 @@ export async function GET(request: NextRequest) {
 
   if (!clientId || !clientSecret) {
     return NextResponse.redirect(
-      `${appUrl}/sign-in?error=${encodeURIComponent("OAuth is not configured on the server.")}`
+      `${fallbackRedirect}?error=${encodeURIComponent("OAuth is not configured on the server.")}`
     );
   }
 
@@ -116,13 +134,82 @@ export async function GET(request: NextRequest) {
   } catch (err) {
     console.error("[Google OAuth] Error:", err);
     return NextResponse.redirect(
-      `${appUrl}/sign-in?error=${encodeURIComponent("Failed to sign in with Google. Please try again.")}`
+      `${fallbackRedirect}?error=${encodeURIComponent("Failed to sign in with Google. Please try again.")}`
     );
   }
 
-  // ── Upsert Organizer in DB ───────────────────────────────────────────────────
+  // ── Handle TEAM Role ────────────────────────────────────────────────────────
+  if (role === "team") {
+    try {
+      // 1. Check if a TeamMember exists
+      const existingMember = await prisma.teamMember.findFirst({
+        where: {
+          OR: [{ googleId: googleProfile.id }, { email: googleProfile.email }],
+        },
+      });
+
+      if (existingMember) {
+        const updatedMember = await prisma.teamMember.update({
+          where: { id: existingMember.id },
+          data: {
+            googleId: googleProfile.id,
+            authProvider: "google",
+            avatarUrl: googleProfile.picture ?? existingMember.avatarUrl,
+            fullName: existingMember.fullName || googleProfile.name,
+          },
+        });
+        await setTeamSessionCookie(updatedMember.id);
+        return NextResponse.redirect(`${appUrl}/team/dashboard`);
+      }
+
+      // 2. Check if a Team Lead exists (Team model)
+      const existingTeamLead = await prisma.team.findFirst({
+        where: {
+          OR: [{ googleId: googleProfile.id }, { email: googleProfile.email }],
+        },
+      });
+
+      if (existingTeamLead) {
+        const updatedTeam = await prisma.team.update({
+          where: { id: existingTeamLead.id },
+          data: {
+            googleId: googleProfile.id,
+            authProvider: "google",
+            avatarUrl: googleProfile.picture ?? existingTeamLead.avatarUrl,
+          },
+        });
+        await setTeamSessionCookie(updatedTeam.id);
+        return NextResponse.redirect(`${appUrl}/team/dashboard`);
+      }
+
+      // 3. Unregistered account
+      if (mode === "join") {
+        const joinUrl = new URL(`${appUrl}/team/join`);
+        joinUrl.searchParams.set("googleName", googleProfile.name);
+        joinUrl.searchParams.set("googleEmail", googleProfile.email);
+        joinUrl.searchParams.set("googleId", googleProfile.id);
+        joinUrl.searchParams.set("googleAvatar", googleProfile.picture || "");
+        joinUrl.searchParams.set(
+          "info",
+          "Sign in with Google successful! Enter your team invite code to join your team."
+        );
+        return NextResponse.redirect(joinUrl.toString());
+      }
+
+      return NextResponse.redirect(
+        `${appUrl}/team/login?error=${encodeURIComponent("No team account found with this email. Please register your team first.")}`
+      );
+    } catch (err: any) {
+      console.error("[Team Google OAuth] Error:", err);
+      const detail = err?.message ? `: ${err.message}` : "";
+      return NextResponse.redirect(
+        `${appUrl}/team/login?error=${encodeURIComponent(`Google authentication failed${detail}`)}`
+      );
+    }
+  }
+
+  // ── Handle ORGANIZER Role ───────────────────────────────────────────────────
   try {
-    // Check if an organizer already exists with this Google ID OR this email
     let organizer = await prisma.organizer.findFirst({
       where: {
         OR: [{ googleId: googleProfile.id }, { email: googleProfile.email }],
@@ -130,7 +217,6 @@ export async function GET(request: NextRequest) {
     });
 
     if (organizer) {
-      // Update OAuth fields in case they signed up with credentials before
       organizer = await prisma.organizer.update({
         where: { id: organizer.id },
         data: {
@@ -140,7 +226,6 @@ export async function GET(request: NextRequest) {
         },
       });
     } else {
-      // First-time Google sign-in — create a new organizer account
       organizer = await prisma.organizer.create({
         data: {
           fullName: googleProfile.name,
@@ -148,15 +233,12 @@ export async function GET(request: NextRequest) {
           googleId: googleProfile.id,
           authProvider: "google",
           avatarUrl: googleProfile.picture,
-          // Required fields — set sensible defaults; organizer can update these later
           designation: "Organizer",
           organizationName: "My Organization",
-          // passwordHash is null (OAuth account)
         },
       });
     }
 
-    // ── Set session cookie (same system used for credentials auth) ──────────────
     await setSessionCookie(organizer.id);
     return NextResponse.redirect(`${appUrl}/organizer/dashboard`);
   } catch (err: any) {

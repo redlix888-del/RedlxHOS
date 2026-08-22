@@ -38,7 +38,7 @@ export async function GET(request: Request) {
     maxAge: 60 * 10, // 10 minutes
   });
 
-  const redirectUri = `${appUrl}/api/team/auth/callback/google`;
+  const redirectUri = `${appUrl}/api/auth/callback/google`;
 
   const params = new URLSearchParams({
     client_id: clientId,
