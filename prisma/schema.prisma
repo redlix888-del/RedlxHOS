@@ -52,6 +52,7 @@ model Hackathon {
   judgingGuidelines  JudgingGuideline[]
   projectSubmissions ProjectSubmission[]
   messages           Message[]
+  problemStatements  ProblemStatement[]
   publishLeaderboard Boolean             @default(false)
   createdAt          DateTime            @default(now())
   updatedAt          DateTime            @updatedAt
@@ -146,10 +147,13 @@ model Team {
   juryRequests      JuryRequest[]
   idea              Idea?
   roasts            ProjectRoast[]
+  problemStatementId String?
+  problemStatement   ProblemStatement? @relation(fields: [problemStatementId], references: [id], onDelete: SetNull)
   createdAt         DateTime           @default(now())
   updatedAt         DateTime           @updatedAt
 
   @@index([hackathonId])
+  @@index([problemStatementId])
 }
 
 model TeamMember {
@@ -283,6 +287,23 @@ model JuryRequest {
 
   @@index([teamId, status])
   @@index([judgeId])
+}
+
+model ProblemStatement {
+  id          String    @id @default(uuid())
+  title       String
+  track       String    // e.g. "AI & ML", "Web3", "Open Innovation"
+  description String
+  difficulty  String?   // "Easy" | "Medium" | "Hard"
+  pdfUrl      String?   // Optional downloadable PDF URL
+  resourceUrl String?   // Optional reference link or starter kit URL
+  hackathonId String
+  hackathon   Hackathon @relation(fields: [hackathonId], references: [id], onDelete: Cascade)
+  teams       Team[]
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@index([hackathonId])
 }
 
 model Idea {

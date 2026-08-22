@@ -19,7 +19,8 @@ import {
   ChevronLeft,
   ChevronRight,
   LogOut,
-  Lightbulb
+  Lightbulb,
+  FileText
 } from "lucide-react";
 import { teamLogOutAction } from "../../actions/team-auth-actions";
 
@@ -48,6 +49,7 @@ export default function TeamSidebar() {
 
   const menuItems = [
     { name: "Dashboard", href: "/team/dashboard", icon: LayoutDashboard },
+    { name: "Problem Statements", href: "/team/dashboard/problem-statements", icon: FileText },
     { name: "Ideate & Validate", href: "/team/dashboard/ideate", icon: Lightbulb },
     { name: "My Team", href: "/team/dashboard/team", icon: Users },
     { name: "Schedule", href: "/team/dashboard/schedule", icon: Calendar },

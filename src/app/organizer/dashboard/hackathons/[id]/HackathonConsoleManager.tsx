@@ -3,6 +3,7 @@
 import { useActionState, startTransition, useState, useEffect } from "react";
 import { saveConsoleDataAction } from "../../../../actions/console-actions";
 import { useRouter } from "next/navigation";
+import ProblemStatementManager from "./ProblemStatementManager";
 
 interface Prize {
   id: string;
@@ -41,10 +42,11 @@ interface HackathonConsoleManagerProps {
     prizes: Prize[];
     faqs: FAQ[];
     scheduleItems: ScheduleItem[];
+    problemStatements?: any[];
   };
 }
 
-type TabType = "overview" | "schedule" | "faqs";
+type TabType = "overview" | "problem_statements" | "schedule" | "faqs";
 
 export default function HackathonConsoleManager({ hackathon }: HackathonConsoleManagerProps) {
   const [activeTab, setActiveTab] = useState<TabType>("overview");
@@ -147,6 +149,16 @@ export default function HackathonConsoleManager({ hackathon }: HackathonConsoleM
         </button>
 
         <button
+          onClick={() => setActiveTab("problem_statements")}
+          className={`pb-3 px-1 transition-all duration-150 relative cursor-pointer ${
+            activeTab === "problem_statements" ? "text-[#E61E32] font-black" : "text-zinc-400 hover:text-zinc-700"
+          }`}
+        >
+          Problem Statements ({hackathon.problemStatements?.length || 0})
+          {activeTab === "problem_statements" && <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-[#E61E32]" />}
+        </button>
+
+        <button
           onClick={() => setActiveTab("schedule")}
           className={`pb-3 px-1 transition-all duration-150 relative cursor-pointer ${
             activeTab === "schedule" ? "text-[#E61E32] font-black" : "text-zinc-400 hover:text-zinc-700"
@@ -167,7 +179,14 @@ export default function HackathonConsoleManager({ hackathon }: HackathonConsoleM
         </button>
       </div>
 
-      <form onSubmit={handleSubmit} className="text-xs font-semibold space-y-6">
+      {activeTab === "problem_statements" && (
+        <ProblemStatementManager
+          hackathonId={hackathon.id}
+          problemStatements={hackathon.problemStatements || []}
+        />
+      )}
+
+      <form onSubmit={handleSubmit} className={`text-xs font-semibold space-y-6 ${activeTab === "problem_statements" ? "hidden" : ""}`}>
         <input type="hidden" name="hackathonId" value={hackathon.id} />
 
         {/* Tab 1: Overview */}

@@ -24,6 +24,7 @@ export default async function PublicHackathonDetailPage({ params }: PublicDetail
       scheduleItems: true,
       registrations: true,
       ticketTiers: true,
+      problemStatements: true,
     },
   });
 
@@ -144,7 +145,61 @@ export default async function PublicHackathonDetailPage({ params }: PublicDetail
             )}
           </div>
 
-          {/* Prizes Breakdown Section */}
+          {/* Problem Statements & Tracks Section */}
+          <div className="bg-white border border-zinc-200 rounded-lg p-6 md:p-8 shadow-sm space-y-6">
+            <div className="border-b border-zinc-150 pb-3 flex justify-between items-center">
+              <div>
+                <h2 className="text-lg font-medium text-zinc-900">Event Problem Statements & Tracks</h2>
+                <p className="text-zinc-400 text-[11px] mt-0.5 font-normal">
+                  Explore available challenge tracks and technical problem briefs.
+                </p>
+              </div>
+              <span className="bg-[#E61E32] text-white text-[10px] font-extrabold px-2.5 py-1 rounded">
+                {hackathon.problemStatements.length} Challenge Track(s)
+              </span>
+            </div>
+
+            {hackathon.problemStatements.length === 0 ? (
+              <p className="text-zinc-400 italic text-sm py-4 text-center font-normal">
+                Problem statements have not been published yet for this event.
+              </p>
+            ) : (
+              <div className="space-y-4">
+                {hackathon.problemStatements.map((ps) => (
+                  <div key={ps.id} className="border border-zinc-200 bg-zinc-50/50 p-5 rounded-lg space-y-2">
+                    <div className="flex items-center gap-2">
+                      <span className="bg-[#E61E32] text-white text-[10px] font-extrabold uppercase px-2 py-0.5 rounded">
+                        {ps.track}
+                      </span>
+                      {ps.difficulty && (
+                        <span className="bg-zinc-200 text-zinc-700 text-[10px] font-bold px-2 py-0.5 rounded">
+                          Difficulty: {ps.difficulty}
+                        </span>
+                      )}
+                    </div>
+                    <h3 className="text-zinc-900 font-bold text-sm">{ps.title}</h3>
+                    <p className="text-zinc-650 font-normal text-xs leading-relaxed whitespace-pre-line bg-white border border-zinc-200 p-3 rounded">
+                      {ps.description}
+                    </p>
+                    {(ps.pdfUrl || ps.resourceUrl) && (
+                      <div className="flex items-center gap-4 text-xs font-bold pt-1">
+                        {ps.pdfUrl && (
+                          <a href={ps.pdfUrl} target="_blank" rel="noreferrer" className="text-[#E61E32] hover:underline">
+                            Download Problem Brief (PDF)
+                          </a>
+                        )}
+                        {ps.resourceUrl && (
+                          <a href={ps.resourceUrl} target="_blank" rel="noreferrer" className="text-zinc-700 hover:underline">
+                            Starter Kit / Resources
+                          </a>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
           <div className="bg-white border border-zinc-200 rounded-lg p-6 md:p-8 shadow-sm space-y-6">
             <div className="border-b border-zinc-150 pb-3">
               <h2 className="text-lg font-medium text-zinc-900">Prizes & Categories</h2>

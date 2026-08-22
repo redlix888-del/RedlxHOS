@@ -40,9 +40,6 @@ export const FullScreenSignup = () => {
  
     if (valid) {
       // Submission logic goes here
-      console.log("Form submitted!");
-      console.log("Email:", email);
-      alert("Form submitted!");
       setEmail("");
       setPassword("");
       setSubmitted(false);
