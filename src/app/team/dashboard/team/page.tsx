@@ -37,7 +37,7 @@ export default async function TeamDetailsConsolePage() {
             Active Squad Members
           </h3>
           <span className="text-[10px] font-extrabold uppercase tracking-wider px-2.5 py-1 border border-zinc-200 bg-zinc-50 text-zinc-600 rounded-none">
-            {totalMembers} of 4 Registered
+            {totalMembers} of 5 Registered
           </span>
         </div>
 
@@ -129,7 +129,7 @@ export default async function TeamDetailsConsolePage() {
               Invite Code for collaborators: <span className="font-mono text-zinc-700 font-bold ml-1">{team.joinCode}</span>
             </p>
             <p className="text-[10px] font-semibold text-zinc-550">
-              Maximum squad size is 4 members.
+              Maximum squad size is 5 members.
             </p>
           </div>
         </div>

@@ -185,9 +185,9 @@ export async function verifyJoinCodeAction(joinCode: string) {
       return { success: false, error: "Invalid invite code. Team not found." };
     }
 
-    // Maximum 4 members per team (1 lead + 3 members)
-    if (team._count.members >= 3) {
-      return { success: false, error: "This team has already reached maximum capacity (4 members)." };
+    // Maximum 5 members per team (1 lead + 4 members)
+    if (team._count.members >= 4) {
+      return { success: false, error: "This team has already reached maximum capacity (5 members)." };
     }
 
     return { success: true, teamId: team.id, teamName: team.teamName };
@@ -238,8 +238,8 @@ export async function joinTeamAction(prevState: any, formData: FormData) {
       return { success: false, error: "Team not found." };
     }
 
-    if (team._count.members >= 3) {
-      return { success: false, error: "This team has already reached maximum capacity (4 members)." };
+    if (team._count.members >= 4) {
+      return { success: false, error: "This team has already reached maximum capacity (5 members)." };
     }
 
     const existingMember = await prisma.teamMember.findUnique({ where: { email } });
