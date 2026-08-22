@@ -11,7 +11,7 @@ export default async function MyHackathonsPage() {
     redirect("/sign-in");
   }
 
-  // Fetch hackathons for this organizer along with registrations and teams
+  // Fetch hackathons for this organizer along with teams and their members
   const hackathons = await prisma.hackathon.findMany({
     where: {
       organizerId: user.id,
@@ -20,7 +20,7 @@ export default async function MyHackathonsPage() {
       registrations: true,
       teams: {
         include: {
-          members: true,
+          _count: { select: { members: true } },
         },
       },
     },
@@ -180,7 +180,7 @@ export default async function MyHackathonsPage() {
                     <div className="text-right">
                       <span className="uppercase tracking-wider">Total Users</span>
                       <span className="block text-sm font-extrabold text-zinc-800 tabular-nums">
-                        {hackathon.teams.reduce((acc, t) => acc + 1 + (t.members?.length || 0), 0) + hackathon.registrations.length}
+                        {hackathon.teams.reduce((sum, t) => sum + 1 + t._count.members, 0)}
                       </span>
                     </div>
                   </div>

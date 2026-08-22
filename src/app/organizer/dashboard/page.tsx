@@ -19,7 +19,11 @@ export default async function OrganizerDashboardPage() {
     },
     include: {
       registrations: true,
-      teams: true,
+      teams: {
+        include: {
+          _count: { select: { members: true } },
+        },
+      },
     },
     orderBy: {
       createdAt: "desc",
