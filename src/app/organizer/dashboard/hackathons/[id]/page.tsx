@@ -29,6 +29,11 @@ export default async function HackathonConsolePage({ params }: HackathonConsoleP
       faqs: true,
       scheduleItems: true,
       registrations: true,
+      problemStatements: {
+        include: {
+          teams: true,
+        },
+      },
       teams: {
         include: {
           members: true,
