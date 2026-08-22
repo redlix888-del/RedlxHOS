@@ -11,6 +11,7 @@ export default function SubNavbar() {
     { name: "My Hackathons", href: "/organizer/dashboard/hackathons" },
     { name: "Announcements", href: "/organizer/dashboard/announcements" },
     { name: "Judging Config", href: "/organizer/dashboard/judging" },
+    { name: "Mentors", href: "/organizer/dashboard/mentors" },
     { name: "Project Submissions", href: "/organizer/dashboard/submissions" },
     { name: "Leaderboard", href: "/organizer/dashboard/leaderboard" },
     { name: "Participants", href: "/organizer/dashboard/participants" },

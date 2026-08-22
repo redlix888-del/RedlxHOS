@@ -50,6 +50,7 @@ model Hackathon {
   announcements      Announcement[]
   judges             Judge[]
   judgingGuidelines  JudgingGuideline[]
+  mentors            Mentor[]
   projectSubmissions ProjectSubmission[]
   messages           Message[]
   problemStatements  ProblemStatement[]
@@ -226,6 +227,20 @@ model Judge {
   juryRequests       JuryRequest[]
   createdAt          DateTime      @default(now())
   updatedAt          DateTime      @updatedAt
+}
+
+model Mentor {
+  id                 String    @id @default(uuid())
+  name               String
+  description        String
+  imageUrl           String?
+  expertise          String?   // e.g. "AI/ML, Product Design"
+  loginCode          String?
+  loginCodeExpiresAt DateTime?
+  hackathonId        String
+  hackathon          Hackathon @relation(fields: [hackathonId], references: [id], onDelete: Cascade)
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
 }
 
 model JudgingGuideline {
