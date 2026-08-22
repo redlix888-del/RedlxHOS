@@ -15,6 +15,7 @@ export default function SubNavbar() {
     { name: "Project Submissions", href: "/organizer/dashboard/submissions" },
     { name: "Leaderboard", href: "/organizer/dashboard/leaderboard" },
     { name: "Participants", href: "/organizer/dashboard/participants" },
+    { name: "Support Chat", href: "/organizer/dashboard/chat" },
     { name: "Console Settings", href: "/organizer/dashboard/settings" },
   ];
 

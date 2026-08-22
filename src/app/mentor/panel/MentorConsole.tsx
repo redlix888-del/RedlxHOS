@@ -12,8 +12,10 @@ import {
   Mail,
   User,
   Home,
-  Laptop
+  Laptop,
+  MessageSquare
 } from "lucide-react";
+import SupportChatConsole from "../../../components/SupportChatConsole";
 
 interface Member {
   id: string;
@@ -90,7 +92,7 @@ export default function MentorConsole({
   announcements,
   guidelines,
 }: MentorConsoleProps) {
-  const [activeTab, setActiveTab] = useState<"home" | "submissions" | "teams" | "messages" | "profile" >("home");
+  const [activeTab, setActiveTab] = useState<"home" | "submissions" | "teams" | "messages" | "profile" | "support-chat">("home");
   const [selectedTeam, setSelectedTeam] = useState<Team | null>(null);
 
   const selectedTeamSubmission = selectedTeam ? submissions.find(s => s.teamId === selectedTeam.id) : undefined;
@@ -99,6 +101,7 @@ export default function MentorConsole({
     { id: "home", name: "Home", count: null },
     { id: "submissions", name: "Submissions", count: submissions.length },
     { id: "teams", name: "Teams", count: teams.length },
+    { id: "support-chat", name: "Support Chat", count: null },
     { id: "messages", name: "Announcements", count: announcements.length },
     { id: "profile", name: "Profile", count: null },
   ] as const;
@@ -120,6 +123,7 @@ export default function MentorConsole({
               }`}
             >
               {tab.id === "home" && <Home className="w-3.5 h-3.5" />}
+              {tab.id === "support-chat" && <MessageSquare className="w-3.5 h-3.5" />}
               <span>{tab.name}</span>
               {tab.count !== null && (
                 <span className={`text-[10px] px-1.5 py-0.5 rounded-none font-bold ${
@@ -497,6 +501,13 @@ export default function MentorConsole({
               </div>
 
             </div>
+          </div>
+        )}
+
+        {activeTab === "support-chat" && (
+          <div className="space-y-4 animate-in fade-in duration-150">
+            <h3 className="font-extrabold text-zinc-550 text-xs uppercase tracking-wider">Live Teams Chatbox Support Sync</h3>
+            <SupportChatConsole teams={teams} currentUserRole="Mentor" />
           </div>
         )}
 

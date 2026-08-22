@@ -1,7 +1,7 @@
 "use server";
 
 import { prisma } from "../../lib/db";
-import { getSessionUser, setMentorSessionCookie, clearMentorSessionCookie } from "../../lib/auth";
+import { getSessionUser, setMentorSessionCookie, clearMentorSessionCookie, getSessionMentor } from "../../lib/auth";
 import { revalidatePath } from "next/cache";
 
 export async function addMentor(
@@ -167,6 +167,101 @@ export async function logoutMentorAction() {
   try {
     await clearMentorSessionCookie();
     return { success: true };
+  } catch (error: any) {
+    return { success: false, error: error.message };
+  }
+}
+
+// ── Support Chat Server Actions ──
+
+export async function fetchTeamMessagesForMentorOrOrganizerAction(teamId: string) {
+  try {
+    const user = await getSessionUser();
+    const mentor = await getSessionMentor();
+
+    if (!user && !mentor) {
+      throw new Error("Unauthorized: Organizer or Mentor login required.");
+    }
+
+    const team = await prisma.team.findUnique({
+      where: { id: teamId },
+    });
+
+    if (!team) {
+      throw new Error("Team not found.");
+    }
+
+    // Fetch all squad messages for this team
+    const messages = await prisma.message.findMany({
+      where: {
+        teamId: team.id,
+        channelId: "team-squad",
+        isPrivate: false,
+      },
+      orderBy: {
+        createdAt: "asc",
+      },
+    });
+
+    return { success: true, messages };
+  } catch (error: any) {
+    return { success: false, error: error.message, messages: [] };
+  }
+}
+
+export async function sendMessageFromMentorOrOrganizerAction(
+  content: string,
+  teamId: string,
+  channelId: string = "team-squad"
+) {
+  try {
+    const user = await getSessionUser();
+    const mentor = await getSessionMentor();
+
+    if (!user && !mentor) {
+      throw new Error("Unauthorized: Organizer or Mentor login required.");
+    }
+
+    const team = await prisma.team.findUnique({
+      where: { id: teamId },
+    });
+
+    if (!team) {
+      throw new Error("Team not found.");
+    }
+
+    let senderId = "";
+    let senderName = "";
+    let senderRole = "";
+    let senderAvatar = "";
+
+    if (user) {
+      senderId = user.id;
+      senderName = user.fullName || "Organizer";
+      senderRole = "Organizer";
+      senderAvatar = senderName.split(" ").map(n => n[0]).join("").toUpperCase();
+    } else if (mentor) {
+      senderId = mentor.id;
+      senderName = mentor.name;
+      senderRole = "Mentor";
+      senderAvatar = mentor.imageUrl || senderName.split(" ").map(n => n[0]).join("").toUpperCase();
+    }
+
+    const message = await prisma.message.create({
+      data: {
+        content: content.trim(),
+        channelId,
+        senderId,
+        senderName,
+        senderAvatar,
+        senderRole,
+        isPrivate: false,
+        teamId: team.id,
+        hackathonId: team.hackathonId,
+      },
+    });
+
+    return { success: true, message };
   } catch (error: any) {
     return { success: false, error: error.message };
   }
